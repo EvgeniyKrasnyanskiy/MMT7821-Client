@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MMT7821 Client</string>
+    <string name="widget_name">MMT7821 Client CGM</string>
+    <string name="widget_desc">Real-time glucose monitor with trend, calibration info, and transmitter battery</string>
+</resources>

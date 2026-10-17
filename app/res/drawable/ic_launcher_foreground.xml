@@ -1,0 +1,58 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer BLE Wireless Pulse Rings -->
+    <path
+        android:strokeColor="#3300E5FF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M34,42 C30,48 30,60 35,68" />
+    <path
+        android:strokeColor="#3300E5FF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M74,42 C78,48 78,60 73,68" />
+
+    <path
+        android:strokeColor="#6600E5FF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M38,45 C35,50 35,58 39,64" />
+    <path
+        android:strokeColor="#6600E5FF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M70,45 C73,50 73,58 69,64" />
+
+    <!-- Stylized Medical Blood Drop -->
+    <!-- Outer Drop Shadow / Halo -->
+    <path
+        android:fillColor="#33FF1744"
+        android:pathData="M54,26 C54,26 73,48 73,61 C73,71.5 64.5,80 54,80 C43.5,80 35,71.5 35,61 C35,48 54,26 54,26 Z" />
+
+    <!-- Core Blood Drop Body -->
+    <path
+        android:fillColor="#FF1744"
+        android:pathData="M54,29 C54,29 70,49 70,61 C70,70 62.8,77 54,77 C45.2,77 38,70 38,61 C38,49 54,29 54,29 Z" />
+
+    <!-- Inner Highlight for Depth & Glassmorphism -->
+    <path
+        android:fillColor="#FF5252"
+        android:pathData="M54,33 C54,33 66,51 66,61 C66,65 64,69 61,72 C56,66 52,50 54,33 Z" />
+
+    <!-- CGM Sensor Wave / EKG Heartbeat Pulse (Teal & Cyan) -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M30,59 L44,59 L47,51 L51,67 L56,53 L60,62 L63,59 L78,59" />
+
+    <!-- Central Sensor Electrode Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,58m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+</vector>

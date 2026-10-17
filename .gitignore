@@ -1,0 +1,26 @@
+# Input large binaries
+input/
+
+# Work directories
+work/
+tools/
+archive/
+output/
+.vscode/
+
+# Temporary files
+*.log
+*.tmp
+__pycache__/
+app/build/
+*.apk
+!MMT7821-Client.apk
+*.idsig
+/*.png
+/*.jpg
+
+# Local files
+CHANGELOG.md
+
+# Internal agent files
+.agent/

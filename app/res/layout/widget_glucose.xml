@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:gravity="center_vertical">
+
+    <!-- Row 1: Calibration Status, Spacer FrameLayout, Battery -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Calibration Status / Countdown Badge -->
+        <TextView
+            android:id="@+id/textWidgetCal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🩸 --"
+            android:textColor="#FFB300"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:background="@drawable/cal_badge_bg"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false" />
+
+        <!-- RemoteViews-safe spacer (FrameLayout is in whitelist, View is not) -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Transmitter Battery -->
+        <TextView
+            android:id="@+id/textWidgetBattery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔋 --%"
+            android:textColor="#76FF03"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false" />
+    </LinearLayout>
+
+    <!-- Row 2: Glucose & Trend Arrow (left) + mg/dL & Time of Reading (right) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="2dp">
+
+        <!-- Left: Main Glucose, Trend Arrow and mmol/L -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/textWidgetGlucose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textColor="#00E676"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:id="@+id/textWidgetTrend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="→"
+                android:textColor="#00E676"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:layout_marginStart="3dp"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:id="@+id/textWidgetUnit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#88FFFFFF"
+                android:textSize="10sp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+
+        <!-- Spacer -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Right: Time of Reading -->
+        <TextView
+            android:id="@+id/textWidgetSub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--:--"
+            android:textColor="#B0BEC5"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false" />
+    </LinearLayout>
+</LinearLayout>
