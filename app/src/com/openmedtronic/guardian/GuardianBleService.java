@@ -630,9 +630,21 @@ public class GuardianBleService extends Service {
         String newKeyHex = GuardianCrypto.bytesToHexNoSpace(appKey);
         isPaired = false;
         pairingRetryCount = 0;
+        sensorStartTimeMs = 0;
+        isCalRequired = false;
+        isCalPending = false;
+        lastGlucoseMmol = 0.0f;
+        lastGlucoseMgDl = 0.0f;
+        lastMeasurementTimeMs = 0;
         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                 .putString(KEY_APP_KEY, newKeyHex)
                 .putBoolean(KEY_IS_PAIRED, false)
+                .putLong(KEY_SENSOR_START_TIME, 0)
+                .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                .putBoolean(KEY_IS_CAL_PENDING, false)
+                .putFloat(KEY_LAST_MMOL, 0.0f)
+                .putFloat(KEY_LAST_MGDL, 0.0f)
+                .putLong(KEY_LAST_MEASUREMENT_TIME, 0)
                 .apply();
         disconnect();
         mainHandler.postDelayed(new Runnable() {
@@ -743,6 +755,7 @@ public class GuardianBleService extends Service {
                 } catch (Exception ignored) {}
                 notifyConnectionState(true);
                 updateNotification();
+                GlucoseWidgetProvider.updateAllWidgets(GuardianBleService.this);
 
                 servicesDiscoveryTriggered = false;
                 handshakeState = HandshakeState.IDLE;
@@ -770,6 +783,7 @@ public class GuardianBleService extends Service {
                 log("GATT Disconnected (status: " + status + ")");
                 notifyConnectionState(false);
                 updateNotification();
+                GlucoseWidgetProvider.updateAllWidgets(GuardianBleService.this);
 
                 if (!userInitiatedDisconnect) {
                     log("Connection lost! Auto-reconnecting in 4s...");

@@ -50,6 +50,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
 
         boolean useMgDl = prefs.getBoolean("use_mgdl", false);
         GuardianBleService service = GuardianBleService.getInstance();
+        boolean isConnected = (service != null && service.isDeviceConnected());
         boolean inWarmup = (service != null) ? service.isInWarmup() : prefs.getBoolean("is_in_warmup", false);
         boolean calPending = (service != null) ? service.isCalPending() : prefs.getBoolean("is_cal_pending", false);
         boolean calRequired = (service != null) ? service.isCalRequired() : prefs.getBoolean("is_cal_required", false);
@@ -63,8 +64,8 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         long lastMeasureMs = (service != null && service.getLastMeasurementTimeMs() > 0) ?
                 service.getLastMeasurementTimeMs() : prefs.getLong("last_measurement_time", 0);
         long lastCalMs = prefs.getLong("cal_time", 0);
-        int battery = (service != null && service.getBatteryLevel() >= 0) ?
-                service.getBatteryLevel() : prefs.getInt("battery_level", -1);
+        int battery = (isConnected && service != null && service.getBatteryLevel() >= 0) ?
+                service.getBatteryLevel() : -1;
 
         long now = System.currentTimeMillis();
         boolean isStale = (lastMeasureMs > 0 && (now - lastMeasureMs) > 11 * 60 * 1000L);
@@ -72,7 +73,15 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
 
         try {
             // 1. Glucose & Trend Arrow
-            if (inWarmup) {
+            if (!isConnected) {
+                views.setTextViewText(R.id.textWidgetGlucose, "--");
+                views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#888888"));
+                views.setTextViewText(R.id.textWidgetTrend, "→");
+                views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#888888"));
+                views.setTextViewText(R.id.textWidgetUnit, "");
+                String lastTime = (lastMeasureMs > 0) ? timeFmt.format(new Date(lastMeasureMs)) : "--:--";
+                views.setTextViewText(R.id.textWidgetSub, "⚠️ Disconnected (" + lastTime + ")");
+            } else if (inWarmup) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));
                 views.setTextViewText(R.id.textWidgetTrend, "⏳");
@@ -97,6 +106,14 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#FFD54F"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
                 views.setTextViewText(R.id.textWidgetSub, "Calibrate sensor");
+            } else if (isStale) {
+                views.setTextViewText(R.id.textWidgetGlucose, "--");
+                views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#888888"));
+                views.setTextViewText(R.id.textWidgetTrend, "→");
+                views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#888888"));
+                views.setTextViewText(R.id.textWidgetUnit, "");
+                String timeStr = (lastMeasureMs > 0) ? timeFmt.format(new Date(lastMeasureMs)) : "--:--";
+                views.setTextViewText(R.id.textWidgetSub, "⚠️ No Signal (" + timeStr + ")");
             } else if (glucoseMmol > 0) {
                 if (useMgDl) {
                     views.setTextViewText(R.id.textWidgetGlucose, String.format(Locale.US, "%d", Math.round(glucoseMgDl)));
@@ -105,9 +122,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 }
 
                 int glucoseColor;
-                if (isStale) {
-                    glucoseColor = Color.parseColor("#888888");
-                } else if (glucoseMmol < 3.9f) {
+                if (glucoseMmol < 3.9f) {
                     glucoseColor = Color.parseColor("#FF5252");
                 } else if (glucoseMmol > 10.0f) {
                     glucoseColor = Color.parseColor("#FFB300");
@@ -134,7 +149,10 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
             }
 
             // 2. Calibration Info Badge
-            if (inWarmup) {
+            if (!isConnected) {
+                views.setTextViewText(R.id.textWidgetCal, "⚠️ Offline");
+                views.setTextColor(R.id.textWidgetCal, Color.parseColor("#888888"));
+            } else if (inWarmup) {
                 views.setTextViewText(R.id.textWidgetCal, "⏳ Warm-up");
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#4FC3F7"));
             } else if (calPending) {

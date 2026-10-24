@@ -201,7 +201,16 @@ public class MainActivity extends Activity {
                     : getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_WARMUP_START_TIME, 0);
             long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
 
-            if (calPending) {
+            boolean isConnected = (service != null && service.isDeviceConnected());
+
+            if (!isConnected) {
+                textCountdown.setText("Transmitter Disconnected");
+                textCountdown.setTextColor(Color.parseColor("#888888"));
+                if (btnQuickCalibrate != null) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
+                updateStaleState(false);
+            } else if (calPending) {
                 textCountdown.setText("⏳ Waiting for calibration acceptance...");
                 textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                 if (btnQuickCalibrate != null) {
@@ -262,7 +271,9 @@ public class MainActivity extends Activity {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (percent < 0) {
+                GuardianBleService service = GuardianBleService.getInstance();
+                boolean isConnected = (service != null && service.isDeviceConnected());
+                if (!isConnected || percent < 0) {
                     textBattery.setText("🔋 --%");
                     textBattery.setTextColor(Color.parseColor("#888888"));
                     return;
@@ -285,6 +296,12 @@ public class MainActivity extends Activity {
             public void run() {
                 if (textSensorDays == null) return;
                 GuardianBleService service = GuardianBleService.getInstance();
+                boolean isConnected = (service != null && service.isDeviceConnected());
+                if (!isConnected) {
+                    textSensorDays.setText("⏳ --d");
+                    textSensorDays.setTextColor(Color.parseColor("#888888"));
+                    return;
+                }
                 if (service != null && service.getSensorStartTimeMs() > 0) {
                     sensorStartTimeMs = service.getSensorStartTimeMs();
                 }
@@ -534,7 +551,14 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     updateStatus(connected ? "Connected to transmitter" : "Disconnected");
-                    if (connected) updateTransmitterNameDisplay();
+                    if (connected) {
+                        updateTransmitterNameDisplay();
+                    } else {
+                        updateBatteryDisplay(-1);
+                        updateSensorDaysDisplay();
+                        updateCalCountdownDisplay();
+                        displayDisconnected();
+                    }
                 }
             });
         }
@@ -590,11 +614,14 @@ public class MainActivity extends Activity {
                     });
                 }
             }
-            updateBatteryDisplay(service.getBatteryLevel());
-            if (service.getLastMeasurementTimeMs() > 0) {
-                lastMeasurementTimeMs = service.getLastMeasurementTimeMs();
-            }
-            if (service.isInWarmup()) {
+            boolean isConnected = service.isDeviceConnected();
+            updateBatteryDisplay(isConnected ? service.getBatteryLevel() : -1);
+            updateSensorDaysDisplay();
+            updateCalCountdownDisplay();
+
+            if (!isConnected) {
+                displayDisconnected();
+            } else if (service.isInWarmup()) {
                 displayWarmup(service.getLastRawVal(), service.getLastStatusDescription());
             } else if (service.isCalPending()) {
                 displayCalibrationPending(service.getLastStatusDescription());
@@ -672,7 +699,12 @@ public class MainActivity extends Activity {
         String savedStatus = sp.getString(KEY_LAST_STATUS_DESC, "Normal");
         int savedRaw = sp.getInt(KEY_LAST_RAW, 0);
 
-        if (isInWarmup) {
+        GuardianBleService service = GuardianBleService.getInstance();
+        boolean isConnected = (service != null && service.isDeviceConnected());
+
+        if (!isConnected) {
+            displayDisconnected();
+        } else if (isInWarmup) {
             displayWarmup(savedRaw, savedStatus);
         } else if (isCalPending) {
             displayCalibrationPending(savedStatus);
@@ -680,6 +712,8 @@ public class MainActivity extends Activity {
             displayCalibrationRequired(savedRaw, savedStatus);
         } else if (lastMmol > 0.0f) {
             displaySavedGlucose(lastMmol, lastMgDl);
+        } else {
+            displayDisconnected();
         }
     }
 
@@ -754,9 +788,15 @@ public class MainActivity extends Activity {
             public void run() {
                 SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
                 GuardianBleService service = GuardianBleService.getInstance();
-                boolean inWarmup = (service != null) ? service.isInWarmup() : isInWarmup;
-                boolean calPending = (service != null) ? service.isCalPending() : isCalPending;
-                boolean calReq = (service != null) ? service.isCalRequired() : isCalRequired;
+                boolean isConnected = (service != null && service.isDeviceConnected());
+                if (!isConnected) {
+                    textCalCountdown.setText("🩸 --");
+                    textCalCountdown.setTextColor(Color.parseColor("#888888"));
+                    return;
+                }
+                boolean inWarmup = service.isInWarmup();
+                boolean calPending = service.isCalPending();
+                boolean calReq = service.isCalRequired();
 
                 if (inWarmup) {
                     textCalCountdown.setText("🩸 Warmup");
@@ -1501,6 +1541,26 @@ public class MainActivity extends Activity {
 
     private void rePairTransmitter() {
         startBleService();
+        sensorStartTimeMs = 0;
+        isInWarmup = false;
+        isCalRequired = false;
+        isCalPending = false;
+        currentMmol = 0.0f;
+        isStaleData = false;
+        lastMeasurementTimeMs = 0;
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putLong(KEY_SENSOR_START_TIME, 0)
+                .putBoolean(KEY_IS_IN_WARMUP, false)
+                .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                .putBoolean(KEY_IS_CAL_PENDING, false)
+                .putFloat(KEY_LAST_MMOL, 0.0f)
+                .putFloat(KEY_LAST_MGDL, 0.0f)
+                .putLong(KEY_LAST_MEASUREMENT_TIME, 0)
+                .apply();
+        displayDisconnected();
+        updateBatteryDisplay(-1);
+        updateSensorDaysDisplay();
+        updateCalCountdownDisplay();
         GuardianBleService service = GuardianBleService.getInstance();
         if (service != null) {
             service.rePairTransmitter();
@@ -2199,6 +2259,37 @@ public class MainActivity extends Activity {
             service.disconnect();
         }
         updateStatus("Disconnected");
+    }
+
+    private void displayDisconnected() {
+        if (textGlucoseMmolValue != null) {
+            textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            textGlucoseMmolValue.setText("--");
+            textGlucoseMmolValue.setTextColor(Color.parseColor("#888888"));
+        }
+        if (textGlucoseMmolUnit != null) {
+            textGlucoseMmolUnit.setVisibility(View.GONE);
+        }
+        if (textTrendArrow != null) {
+            textTrendArrow.setVisibility(View.GONE);
+        }
+        if (textGlucoseMgDl != null) {
+            textGlucoseMgDl.setText("Disconnected");
+            textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
+        }
+        if (textSensorDetails != null) {
+            textSensorDetails.setText("Transmitter disconnected");
+        }
+        if (textCountdown != null) {
+            textCountdown.setText("Transmitter Disconnected");
+            textCountdown.setTextColor(Color.parseColor("#888888"));
+        }
+        if (btnQuickCalibrate != null) {
+            btnQuickCalibrate.setVisibility(View.GONE);
+        }
+        updateBatteryDisplay(-1);
+        updateSensorDaysDisplay();
+        updateCalCountdownDisplay();
     }
 
     private void displayWarmup(int rawVal, String statusDesc) {
