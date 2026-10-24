@@ -99,6 +99,7 @@ public class GuardianBleService extends Service {
     private static final String KEY_WARMUP_START_TIME = "warmup_start_time";
     private static final String KEY_DEVICE_NAME = "device_name";
     private static final String KEY_XDRIP_BROADCAST = "xdrip_broadcast";
+    private static final String KEY_USER_DISCONNECTED = "user_disconnected";
 
     // Alarm rate-limiting
     private long lastAlarmTriggerTimeMs = 0;
@@ -162,6 +163,7 @@ public class GuardianBleService extends Service {
 
     private boolean isConnecting = false;
     private boolean userInitiatedDisconnect = false;
+    private int failedReconnectCount = 0;
     private boolean isPaired = false;
     private byte[] appKey;
     private String targetMac = "";
@@ -319,7 +321,7 @@ public class GuardianBleService extends Service {
         this.listener = l;
         if (listener != null) {
             stopAlarmSound();
-            boolean isConn = (bluetoothGatt != null);
+            boolean isConn = isDeviceConnected();
             listener.onConnectionStateChanged(isConn);
             listener.onBatteryReceived(isConn ? batteryLevelPercent : -1);
             listener.onHandshakeStateChanged(handshakeState);
@@ -343,6 +345,7 @@ public class GuardianBleService extends Service {
         SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String savedKeyHex = sp.getString(KEY_APP_KEY, null);
         isPaired = sp.getBoolean(KEY_IS_PAIRED, false);
+        userInitiatedDisconnect = sp.getBoolean(KEY_USER_DISCONNECTED, false);
         targetMac = sp.getString(KEY_MAC, "");
         batteryLevelPercent = sp.getInt(KEY_BATTERY_LEVEL, -1);
         sensorStartTimeMs = sp.getLong(KEY_SENSOR_START_TIME, 0);
@@ -539,7 +542,7 @@ public class GuardianBleService extends Service {
     private final Runnable watchdogRunnable = new Runnable() {
         @Override
         public void run() {
-            if (isPaired && !userInitiatedDisconnect && bluetoothGatt == null && !isConnecting) {
+            if (isPaired && !userInitiatedDisconnect && bluetoothGatt == null && !isConnecting && failedReconnectCount < 2) {
                 log("Watchdog: connection lost. Reconnecting...");
                 connectToDevice(targetMac);
             }
@@ -577,6 +580,8 @@ public class GuardianBleService extends Service {
         }
 
         userInitiatedDisconnect = false;
+        failedReconnectCount = 0;
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putBoolean(KEY_USER_DISCONNECTED, false).apply();
         status134RetryCount = 0;
         if (isConnecting || bluetoothGatt != null) return;
 
@@ -608,6 +613,8 @@ public class GuardianBleService extends Service {
 
     public synchronized void disconnect() {
         userInitiatedDisconnect = true;
+        failedReconnectCount = 0;
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putBoolean(KEY_USER_DISCONNECTED, true).apply();
         isConnecting = false;
         isGattConnected = false;
         clearGattQueue();
@@ -635,6 +642,8 @@ public class GuardianBleService extends Service {
         appKey = GuardianCrypto.generateRandom16();
         String newKeyHex = GuardianCrypto.bytesToHexNoSpace(appKey);
         isPaired = false;
+        userInitiatedDisconnect = false;
+        failedReconnectCount = 0;
         pairingRetryCount = 0;
         sensorStartTimeMs = 0;
         isCalRequired = false;
@@ -645,6 +654,7 @@ public class GuardianBleService extends Service {
         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                 .putString(KEY_APP_KEY, newKeyHex)
                 .putBoolean(KEY_IS_PAIRED, false)
+                .putBoolean(KEY_USER_DISCONNECTED, false)
                 .putLong(KEY_SENSOR_START_TIME, 0)
                 .putBoolean(KEY_IS_CAL_REQUIRED, false)
                 .putBoolean(KEY_IS_CAL_PENDING, false)
@@ -751,6 +761,7 @@ public class GuardianBleService extends Service {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 isConnecting = false;
                 isGattConnected = true;
+                failedReconnectCount = 0;
                 clearGattQueue();
                 updateStatus("Connected. Requesting MTU...");
                 log("GATT Connected! Requesting MTU 512...");
@@ -794,16 +805,22 @@ public class GuardianBleService extends Service {
                 GlucoseWidgetProvider.updateAllWidgets(GuardianBleService.this);
 
                 if (!userInitiatedDisconnect) {
-                    log("Connection lost! Auto-reconnecting in 4s...");
-                    updateStatus("Connection lost. Reconnecting...");
-                    mainHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (bluetoothGatt == null && !userInitiatedDisconnect) {
-                                connectToDevice(targetMac);
+                    failedReconnectCount++;
+                    if (failedReconnectCount <= 2) {
+                        int delaySec = failedReconnectCount * 5;
+                        log("Connection lost! Retrying in " + delaySec + "s (attempt " + failedReconnectCount + "/2)...");
+                        mainHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (bluetoothGatt == null && !userInitiatedDisconnect) {
+                                    connectToDevice(targetMac);
+                                }
                             }
-                        }
-                    }, 4000L);
+                        }, delaySec * 1000L);
+                    } else {
+                        log("Transmitter offline / disconnected. Auto-reconnect stopped. Status: Disconnected.");
+                        updateStatus("Disconnected");
+                    }
                 }
             }
         }
@@ -1997,7 +2014,7 @@ public class GuardianBleService extends Service {
             @Override
             public void run() {
                 if (listener != null) {
-                    listener.onLogAppended(msg);
+                    listener.onLogAppended(formattedLine);
                 }
             }
         });

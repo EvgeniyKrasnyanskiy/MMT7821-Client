@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
     private static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     private static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
     private static final String KEY_IS_CAL_PENDING = "is_cal_pending";
+    private static final String KEY_USER_DISCONNECTED = "user_disconnected";
 
     private static final int REQ_PERMISSIONS = 101;
     private static final int REQ_EXPORT_CSV = 2001;
@@ -389,6 +390,37 @@ public class MainActivity extends Activity {
 
         btnSettings = findViewById(R.id.btnSettings);
         textTransmitterName = findViewById(R.id.textTransmitterName);
+        textStatus = findViewById(R.id.textStatus);
+
+        View.OnClickListener toggleConnectionListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                GuardianBleService service = GuardianBleService.getInstance();
+                boolean isConnected = (service != null && service.isDeviceConnected());
+                boolean isConnecting = (service != null && service.isDeviceConnecting());
+                if (isConnected || isConnecting) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(isConnected ? "Disconnect Transmitter" : "Stop Connecting")
+                            .setMessage(isConnected ? "Disconnect from transmitter " + targetMac + "?"
+                                    : "Cancel connection attempt?")
+                            .setPositiveButton(isConnected ? "Disconnect" : "Stop", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    disconnect();
+                                    Toast.makeText(MainActivity.this, "Transmitter disconnected", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                } else {
+                    checkPermissionsAndConnect();
+                    Toast.makeText(MainActivity.this, "Connecting to transmitter...", Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
+        if (textTransmitterName != null) textTransmitterName.setOnClickListener(toggleConnectionListener);
+        if (textStatus != null) textStatus.setOnClickListener(toggleConnectionListener);
+
         textCalCountdown = findViewById(R.id.textCalCountdown);
         if (textCalCountdown != null) {
             textCalCountdown.setOnClickListener(new View.OnClickListener() {
@@ -972,8 +1004,9 @@ public class MainActivity extends Activity {
 
         TextView lblMac = new TextView(this);
         final boolean isConn = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
-        lblMac.setText(isConn ? "Transmitter MAC Address (Connected):" : "Transmitter MAC Address:");
-        lblMac.setTextColor(isConn ? Color.parseColor("#81C784") : Color.WHITE);
+        final boolean isConnecting = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
+        lblMac.setText(isConn ? "Transmitter MAC Address (Connected):" : (isConnecting ? "Transmitter MAC Address (Connecting...):" : "Transmitter MAC Address (Disconnected):"));
+        lblMac.setTextColor(isConn ? Color.parseColor("#81C784") : (isConnecting ? Color.parseColor("#FFD54F") : Color.WHITE));
         lblMac.setTextSize(13);
         LinearLayout.LayoutParams macLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -985,10 +1018,10 @@ public class MainActivity extends Activity {
         editMacInput.setText(targetMac);
         editMacInput.setHint("XX:XX:XX:XX:XX:XX");
         editMacInput.setHintTextColor(Color.parseColor("#777777"));
-        editMacInput.setTextColor(isConn ? Color.GRAY : Color.WHITE);
-        editMacInput.setEnabled(!isConn);
-        editMacInput.setFocusable(!isConn);
-        editMacInput.setBackgroundColor(Color.parseColor(isConn ? "#1A1A1A" : "#252525"));
+        editMacInput.setTextColor((isConn || isConnecting) ? Color.GRAY : Color.WHITE);
+        editMacInput.setEnabled(!isConn && !isConnecting);
+        editMacInput.setFocusable(!isConn && !isConnecting);
+        editMacInput.setBackgroundColor(Color.parseColor((isConn || isConnecting) ? "#1A1A1A" : "#252525"));
         editMacInput.setPadding(pad / 2, pad / 2, pad / 2, pad / 2);
         editMacInput.setTextSize(14);
         layout.addView(editMacInput);
@@ -997,8 +1030,8 @@ public class MainActivity extends Activity {
         btnScanBle.setText("🔍 Scan for Transmitter (BLE)");
         styleSettingsButton(btnScanBle, Color.parseColor("#2A2A2A"), false);
         btnScanBle.setTextColor(Color.WHITE);
-        btnScanBle.setEnabled(!isConn);
-        if (isConn) btnScanBle.setVisibility(View.GONE);
+        btnScanBle.setEnabled(!isConn && !isConnecting);
+        if (isConn || isConnecting) btnScanBle.setVisibility(View.GONE);
         LinearLayout.LayoutParams scanLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         scanLp.topMargin = dpToPx(6);
@@ -1006,8 +1039,16 @@ public class MainActivity extends Activity {
         layout.addView(btnScanBle);
 
         final Button btnConnAction = new Button(this);
-        btnConnAction.setText(isConn ? "Disconnect Transmitter" : "Connect to Transmitter");
-        styleSettingsButton(btnConnAction, isConn ? Color.parseColor("#3D1E1E") : Color.parseColor("#1E3A5F"), false);
+        if (isConn) {
+            btnConnAction.setText("Disconnect Transmitter");
+            styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
+        } else if (isConnecting) {
+            btnConnAction.setText("🛑 Stop Connecting");
+            styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
+        } else {
+            btnConnAction.setText("Connect to Transmitter");
+            styleSettingsButton(btnConnAction, Color.parseColor("#1E3A5F"), false);
+        }
         btnConnAction.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -1231,11 +1272,13 @@ public class MainActivity extends Activity {
                 targetMac = editMacInput.getText().toString().trim().toUpperCase(Locale.US);
                 getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putString(KEY_MAC, targetMac).apply();
                 boolean isConnected = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
-                if (isConnected) {
+                boolean isConnectingNow = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
+                if (isConnected || isConnectingNow) {
                     new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Disconnect")
-                            .setMessage("Are you sure you want to disconnect from the transmitter? Glucose reception will be paused.")
-                            .setPositiveButton("Disconnect", new DialogInterface.OnClickListener() {
+                            .setTitle(isConnected ? "Disconnect" : "Stop Connecting")
+                            .setMessage(isConnected ? "Are you sure you want to disconnect from the transmitter? Glucose reception will be paused."
+                                    : "Cancel connection attempt?")
+                            .setPositiveButton(isConnected ? "Disconnect" : "Stop", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface d, int which) {
                                     disconnect();
@@ -1252,7 +1295,7 @@ public class MainActivity extends Activity {
                             .show();
                 } else {
                     checkPermissionsAndConnect();
-                    btnConnAction.setText("Disconnect Transmitter");
+                    btnConnAction.setText("🛑 Stop Connecting");
                     styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
                     editMacInput.setEnabled(false);
                     editMacInput.setTextColor(Color.GRAY);
@@ -1544,6 +1587,7 @@ public class MainActivity extends Activity {
                 .putBoolean(KEY_IS_IN_WARMUP, false)
                 .putBoolean(KEY_IS_CAL_REQUIRED, false)
                 .putBoolean(KEY_IS_CAL_PENDING, false)
+                .putBoolean(KEY_USER_DISCONNECTED, false)
                 .putFloat(KEY_LAST_MMOL, 0.0f)
                 .putFloat(KEY_LAST_MGDL, 0.0f)
                 .putLong(KEY_LAST_MEASUREMENT_TIME, 0)
@@ -2298,6 +2342,9 @@ public class MainActivity extends Activity {
     }
 
     private void connectToDevice(String mac) {
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putBoolean(KEY_USER_DISCONNECTED, false)
+                .apply();
         startBleService();
         GuardianBleService service = GuardianBleService.getInstance();
         if (service != null) {
@@ -2306,11 +2353,14 @@ public class MainActivity extends Activity {
     }
 
     private void disconnect() {
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putBoolean(KEY_USER_DISCONNECTED, true)
+                .apply();
         GuardianBleService service = GuardianBleService.getInstance();
         if (service != null) {
             service.disconnect();
         }
-        updateStatus("Disconnected");
+        displayDisconnected();
     }
 
     private void displayDisconnected() {
