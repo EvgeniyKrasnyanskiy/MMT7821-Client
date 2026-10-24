@@ -25,10 +25,10 @@ Users who own the **Medtronic Guardian Connect (MMT-7821)** Bluetooth Low Energy
 - **Interactive Multi-Zone Chart**: Smooth Monotone Cubic Bezier spline graph with sharp multi-color zone gradients (Hypo Red `< 3.9`, Target Green `3.9–10.0`, Hyper Amber `> 10.0`), crosshair scrubber tooltip, manual BG / calibration markers, therapy badges (Cyan 💉 Insulin, Amber 🍞 Carbs), and centered timeframe presets (**`3h` | `6h` | `12h` | `24h`**).
 - **Therapy Tracking (Insulin & Carbs)**: Quick logging of bolus doses and carbohydrate intake with flexible timestamp selection (system time picker or preset buttons) and Scrubber detail cards on the chart.
 - **Optional Local Broadcast to xDrip+ & AndroidAPS**: When enabled in Settings, broadcasts standard `com.eveningoutpost.dexdrip.BgEstimate` intents for local integration with smartwatches (Garmin, Wear OS, WatchDrip) and open-source diabetes apps.
-- **High-Priority Safety Alarms & Snooze**: Configurable audio (`USAGE_ALARM`) and vibration alerts for Hypoglycemia (`< 3.9 mmol/L` / `70 mg/dL`), Hyperglycemia (`> 10.0 mmol/L` / `180 mg/dL`), and Calibration requests, with notification swipe-to-dismiss and a 30-minute Snooze action.
+- **High-Priority Safety Alarms & Snooze**: Configurable audio (`USAGE_ALARM`) and vibration alerts for Hypoglycemia (`< 3.9 mmol/L` / `70 mg/dL`), Hyperglycemia (`> 10.0 mmol/L` / `180 mg/dL`), Calibration requests, and Missed Sensor Readings (> 20 min), with notification swipe-to-dismiss and a 30-minute Snooze action.
 - **Automatic History Gap Recovery**: Detects packet counter gaps upon BLE reconnection, requests missed historical readings from transmitter memory, and reconstructs 5-minute retrospective timestamps.
 - **Home Screen Widget**: Lightweight desktop widget displaying current glucose in the user's preferred unit, trend arrows (`⇈`, `↑`, `↗`, `→`, `↘`, `↓`, `⇊`), calibration countdown, transmitter battery level, and reading time.
-- **Sensor Warm-Up & Lifespan Extension (+6 Days)**: Tracks the 2-hour warm-up for newly inserted sensors and allows resetting the local 6-day app countdown timer without interrupting sensor operation.
+- **Sensor Warm-Up & Hardware Lifecycle**: Tracks the 2-hour warm-up for newly attached sensors and displays real-time countdowns and battery levels.
 - **SiDiary CSV Export with Therapy Records**: Exports up to 14 days (4,032 points) of CGM, calibration history, and therapy entries in xDrip/Nightscout-compatible SiDiary CSV format (`DAY;TIME;UDT_CGMS;BG_LEVEL;CH_GR;BOLUS;REMARK`).
 
 ---

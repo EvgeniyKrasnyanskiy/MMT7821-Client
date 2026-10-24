@@ -85,7 +85,9 @@ public class MainActivity extends Activity {
     private static final String KEY_USE_MGDL = "use_mgdl";
     private static final String KEY_ALARMS_ENABLED = "alarms_enabled";
     private static final String KEY_ALARM_CAL_ENABLED = "alarm_cal_enabled";
+    private static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     private static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
+    private static final String KEY_IS_CAL_PENDING = "is_cal_pending";
 
     private static final int REQ_PERMISSIONS = 101;
     private static final int REQ_EXPORT_CSV = 2001;
@@ -124,6 +126,7 @@ public class MainActivity extends Activity {
     private long sensorStartTimeMs = 0;
     private boolean isInWarmup = false;
     private boolean isCalRequired = false;
+    private boolean isCalPending = false;
     private float currentMmol = 0.0f;
     private boolean isStaleData = false;
     private int lastRawIsig = 0;
@@ -191,13 +194,21 @@ public class MainActivity extends Activity {
             updateCalCountdownDisplay();
 
             boolean inWarmup = (service != null) ? service.isInWarmup() : isInWarmup;
+            boolean calPending = (service != null) ? service.isCalPending() : isCalPending;
             boolean calReq = (service != null) ? service.isCalRequired() : isCalRequired;
             long warmupStart = (service != null && service.getWarmupStartTimeMs() > 0)
                     ? service.getWarmupStartTimeMs()
                     : getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_WARMUP_START_TIME, 0);
             long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
 
-            if (calReq) {
+            if (calPending) {
+                textCountdown.setText("⏳ Waiting for calibration acceptance...");
+                textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
+                if (btnQuickCalibrate != null) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
+                updateStaleState(false);
+            } else if (calReq) {
                 textCountdown.setText(lastCalTime > 0 ? "🩸 Calibration Needed" : "Waiting for 1st Calibration");
                 textCountdown.setTextColor(Color.parseColor("#FFD54F"));
                 if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
@@ -495,9 +506,15 @@ public class MainActivity extends Activity {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    GuardianBleService service = GuardianBleService.getInstance();
-                    if (service != null && textLogs != null) {
-                        textLogs.setText(service.getLogHistory());
+                    if (textLogs != null) {
+                        if (textLogs.getText().length() == 0) {
+                            GuardianBleService service = GuardianBleService.getInstance();
+                            if (service != null) {
+                                textLogs.setText(service.getLogHistory());
+                            }
+                        } else {
+                            textLogs.append("\n" + logMsg);
+                        }
                         if (isLogsExpanded && scrollLogs != null) {
                             scrollLogs.post(new Runnable() {
                                 @Override
@@ -577,10 +594,12 @@ public class MainActivity extends Activity {
             if (service.getLastMeasurementTimeMs() > 0) {
                 lastMeasurementTimeMs = service.getLastMeasurementTimeMs();
             }
-            if (service.isCalRequired() && service.getLastGlucoseMmol() <= 0.0f) {
-                displayCalibrationRequired(service.getLastRawVal(), service.getLastStatusDescription());
-            } else if (service.isInWarmup()) {
+            if (service.isInWarmup()) {
                 displayWarmup(service.getLastRawVal(), service.getLastStatusDescription());
+            } else if (service.isCalPending()) {
+                displayCalibrationPending(service.getLastStatusDescription());
+            } else if (service.isCalRequired()) {
+                displayCalibrationRequired(service.getLastRawVal(), service.getLastStatusDescription());
             } else if (service.getLastGlucoseMmol() > 0.0f) {
                 displayGlucose(service.getLastGlucoseMmol(), service.getLastGlucoseMgDl(),
                         service.getLastRawVal(), service.getLastTrendRate(), service.getLastStatusDescription());
@@ -649,13 +668,16 @@ public class MainActivity extends Activity {
 
         isInWarmup = sp.getBoolean(KEY_IS_IN_WARMUP, false);
         isCalRequired = sp.getBoolean(KEY_IS_CAL_REQUIRED, false);
+        isCalPending = sp.getBoolean(KEY_IS_CAL_PENDING, false);
         String savedStatus = sp.getString(KEY_LAST_STATUS_DESC, "Normal");
         int savedRaw = sp.getInt(KEY_LAST_RAW, 0);
 
-        if (isCalRequired && lastMmol <= 0.0f) {
-            displayCalibrationRequired(savedRaw, savedStatus);
-        } else if (isInWarmup) {
+        if (isInWarmup) {
             displayWarmup(savedRaw, savedStatus);
+        } else if (isCalPending) {
+            displayCalibrationPending(savedStatus);
+        } else if (isCalRequired) {
+            displayCalibrationRequired(savedRaw, savedStatus);
         } else if (lastMmol > 0.0f) {
             displaySavedGlucose(lastMmol, lastMgDl);
         }
@@ -733,11 +755,18 @@ public class MainActivity extends Activity {
                 SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
                 GuardianBleService service = GuardianBleService.getInstance();
                 boolean inWarmup = (service != null) ? service.isInWarmup() : isInWarmup;
+                boolean calPending = (service != null) ? service.isCalPending() : isCalPending;
                 boolean calReq = (service != null) ? service.isCalRequired() : isCalRequired;
 
                 if (inWarmup) {
                     textCalCountdown.setText("🩸 Warmup");
                     textCalCountdown.setTextColor(Color.parseColor("#888888"));
+                    return;
+                }
+
+                if (calPending) {
+                    textCalCountdown.setText("⏳ Processing");
+                    textCalCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                     return;
                 }
 
@@ -998,32 +1027,16 @@ public class MainActivity extends Activity {
         rowUnitSnooze.addView(btnSnooze);
         layout.addView(rowUnitSnooze);
 
-        // Row 3: [⏳ Extend (+6d)] & [💾 Export CSV]
-        LinearLayout rowExtendExport = new LinearLayout(this);
-        rowExtendExport.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams rowExtendExportLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rowExtendExportLp.topMargin = dpToPx(8);
-        rowExtendExport.setLayoutParams(rowExtendExportLp);
-
-        Button btnExtendSensor = new Button(this);
-        btnExtendSensor.setText("⏳ Extend (+6d)");
-        styleSettingsButton(btnExtendSensor, Color.parseColor("#2A2A2A"), false);
-        btnExtendSensor.setTextColor(Color.WHITE);
-        LinearLayout.LayoutParams extendSensorLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
-        extendSensorLp.rightMargin = dpToPx(4);
-        btnExtendSensor.setLayoutParams(extendSensorLp);
-        rowExtendExport.addView(btnExtendSensor);
-
+        // Row 3: [💾 Export SiDiary CSV]
         Button btnExportCsv = new Button(this);
-        btnExportCsv.setText("💾 Export CSV");
+        btnExportCsv.setText("💾 Export SiDiary CSV");
         styleSettingsButton(btnExportCsv, Color.parseColor("#2A2A2A"), false);
         btnExportCsv.setTextColor(Color.WHITE);
-        LinearLayout.LayoutParams exportCsvLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
-        exportCsvLp.leftMargin = dpToPx(4);
+        LinearLayout.LayoutParams exportCsvLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        exportCsvLp.topMargin = dpToPx(8);
         btnExportCsv.setLayoutParams(exportCsvLp);
-        rowExtendExport.addView(btnExportCsv);
-        layout.addView(rowExtendExport);
+        layout.addView(btnExportCsv);
 
         // Row 4: [ℹ️ Guide & Info] & [🗑️ Clear History]
         LinearLayout rowGuideClear = new LinearLayout(this);
@@ -1091,6 +1104,19 @@ public class MainActivity extends Activity {
             }
         });
         layout.addView(chkCalAlarm);
+
+        final CheckBox chkMissedAlarm = new CheckBox(this);
+        chkMissedAlarm.setText("⚠️ Alert on No Sensor Readings (> 20 min)");
+        chkMissedAlarm.setTextColor(Color.WHITE);
+        chkMissedAlarm.setChecked(sp.getBoolean(KEY_ALARM_MISSED_READINGS_ENABLED, true));
+        chkMissedAlarm.setLayoutParams(chkLp);
+        chkMissedAlarm.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                sp.edit().putBoolean(KEY_ALARM_MISSED_READINGS_ENABLED, isChecked).apply();
+            }
+        });
+        layout.addView(chkMissedAlarm);
 
         final CheckBox chkXdrip = new CheckBox(this);
         chkXdrip.setText("📡 Broadcast to xDrip+ / AAPS");
@@ -1205,28 +1231,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        btnExtendSensor.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Extend Sensor Lifespan")
-                        .setMessage("Reset the local sensor countdown to 6 days?\n\n(This updates the local app timer without interrupting sensor operation or resetting transmitter hardware warm-up).")
-                        .setPositiveButton("Extend (+6 days)", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface d, int which) {
-                                sensorStartTimeMs = System.currentTimeMillis();
-                                getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
-                                        .putLong(KEY_SENSOR_START_TIME, sensorStartTimeMs)
-                                        .apply();
-                                updateSensorDaysDisplay();
-                                appendLog("Sensor lifespan counter extended to 6 days.");
-                                Toast.makeText(MainActivity.this, "Sensor counter reset to 6 days", Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            }
-        });
+
 
         btnResetPair.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1332,8 +1337,8 @@ public class MainActivity extends Activity {
         sb.append("3. Sensor Start & Warm-up: Attach the transmitter to the sensor on your body. The 2-hour hardware warm-up will start automatically.\n");
         sb.append("4. Calibration: Once warm-up finishes ('Waiting for Calibration'), enter a fingerstick blood glucose reading from your meter. Calibrate every 6–12 hours when glucose is stable.\n\n");
 
-        sb.append("⏳ Sensor Lifespan Extension (+6 Days)\n");
-        sb.append("Enlite sensors are passive enzymatic electrodes without internal lockout chips. When the 6-day countdown expires, you can tap 'Extend Sensor Counter (+6 days)' in Settings to reset the local app timer for another cycle without triggering a hardware warm-up reset.\n\n");
+        sb.append("⏳ Sensor Lifespan & Restart\n");
+        sb.append("Guardian Connect MMT-7821 enforces the 6-day sensor lifespan in transmitter hardware. To restart a sensor session, physically detach the transmitter from the sensor, place it on the charger for 15–20 minutes to reset the internal session timer, and reattach it to begin a new 2-hour warm-up.\n\n");
 
         sb.append("⚠️ Medical & Legal Disclaimer (IMPORTANT)\n");
         sb.append("FOR RESEARCH AND EDUCATIONAL (DIY) PURPOSES ONLY. MMT7821-Client is NOT an approved medical device and has not been evaluated by the FDA or any regulatory authority. Software or Bluetooth failures may occur. NEVER make insulin dosing or treatment decisions based solely on this app—always confirm with a certified blood glucose meter. By using this software, you assume full responsibility and all associated risks.");
@@ -1572,10 +1577,9 @@ public class MainActivity extends Activity {
             appendLog(String.format(Locale.US, "Calibration entered: %d mg/dL (%.1f mmol/L). Sending to transmitter...",
                     bgMgDl, bgMmol));
 
-            isCalRequired = false;
+            isCalPending = true;
             getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
-                    .putLong(KEY_CAL_TIME, now)
-                    .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                    .putBoolean(KEY_IS_CAL_PENDING, true)
                     .apply();
             updateCalCountdownDisplay();
 
@@ -1590,8 +1594,7 @@ public class MainActivity extends Activity {
             }
 
             glucoseChart.addPoint(now, bgMmol, (float) bgMgDl, GlucoseChartView.TYPE_CALIBRATION);
-            displayGlucose(bgMmol, (float) bgMgDl, (lastRawIsig > 0 ? lastRawIsig : bgMgDl), lastTrendRate,
-                    String.format(Locale.US, "Calibration (%.1f) sent", bgMmol));
+            displayCalibrationPending(String.format(Locale.US, "Calibration (%.1f) sent, processing...", bgMmol));
 
             if (btnQuickCalibrate != null) {
                 btnQuickCalibrate.setVisibility(View.GONE);
@@ -2229,12 +2232,14 @@ public class MainActivity extends Activity {
     private void displayCalibrationRequired(int rawVal, String statusDesc) {
         isInWarmup = false;
         isCalRequired = true;
+        isCalPending = false;
         currentMmol = 0.0f;
         isStaleData = false;
         lastMeasurementTimeMs = System.currentTimeMillis();
         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                 .putLong(KEY_LAST_MEASUREMENT_TIME, lastMeasurementTimeMs)
                 .putBoolean(KEY_IS_IN_WARMUP, false)
+                .putBoolean(KEY_IS_CAL_PENDING, false)
                 .putBoolean(KEY_IS_CAL_REQUIRED, true)
                 .apply();
 
@@ -2259,29 +2264,66 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void displayCalibrationPending(String statusDesc) {
+        isInWarmup = false;
+        isCalPending = true;
+        isCalRequired = false;
+        currentMmol = 0.0f;
+        isStaleData = false;
+        lastMeasurementTimeMs = System.currentTimeMillis();
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putLong(KEY_LAST_MEASUREMENT_TIME, lastMeasurementTimeMs)
+                .putBoolean(KEY_IS_IN_WARMUP, false)
+                .putBoolean(KEY_IS_CAL_PENDING, true)
+                .apply();
+
+        textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+        textGlucoseMmolValue.setText("--");
+        textGlucoseMmolValue.setTextColor(Color.parseColor("#4FC3F7"));
+        textGlucoseMmolUnit.setVisibility(View.GONE);
+        if (textTrendArrow != null) {
+            textTrendArrow.setVisibility(View.VISIBLE);
+            textTrendArrow.setText("⏳");
+            textTrendArrow.setTextColor(Color.parseColor("#4FC3F7"));
+        }
+        textGlucoseMgDl.setText("Processing Calibration...");
+        textGlucoseMgDl.setTextColor(Color.parseColor("#4FC3F7"));
+        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Processing Calibration (5–15 min)...";
+        textSensorDetails.setText(desc);
+        textCountdown.setText("⏳ Waiting for calibration acceptance...");
+        textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
+        if (btnQuickCalibrate != null) {
+            btnQuickCalibrate.setVisibility(View.GONE);
+        }
+    }
+
     private void displayGlucose(float mmol, float mgDl, int rawVal, double trend, String statusDesc) {
         String trendStr = Double.isNaN(trend) ? "--" : String.format(Locale.US, "%+.2f", trend);
         GuardianBleService s = GuardianBleService.getInstance();
 
-        boolean serviceInWarmup = (s != null && s.isInWarmup());
-        boolean serviceCalReq = (s != null && s.isCalRequired());
+        boolean serviceInWarmup = (s != null && s.isInWarmup()) || isInWarmup;
+        boolean serviceCalPending = (s != null && s.isCalPending()) || isCalPending;
+        boolean serviceCalReq = (s != null && s.isCalRequired()) || isCalRequired;
 
-        if (mmol <= 0.0f) {
-            if (serviceInWarmup) {
-                displayWarmup(rawVal, statusDesc);
-                updateStatus(statusDesc);
-                return;
-            }
-            if (serviceCalReq || rawVal == 65535) {
-                displayCalibrationRequired(rawVal, statusDesc);
-                updateStatus(statusDesc);
-                return;
-            }
+        if (serviceInWarmup) {
+            displayWarmup(rawVal, statusDesc);
+            updateStatus(statusDesc);
+            return;
+        }
+        if (serviceCalPending) {
+            displayCalibrationPending(statusDesc);
+            updateStatus(statusDesc);
+            return;
+        }
+        if (serviceCalReq || rawVal == 65535 || mmol <= 0.0f) {
+            displayCalibrationRequired(rawVal, statusDesc);
+            updateStatus(statusDesc);
+            return;
         }
 
-        if (mmol > 0.0f) {
-            isInWarmup = false;
-            isCalRequired = serviceCalReq;
+        isInWarmup = false;
+        isCalPending = false;
+        isCalRequired = false;
             float prevMmol = currentMmol;
             currentMmol = mmol;
             lastRawIsig = rawVal;
@@ -2335,18 +2377,6 @@ public class MainActivity extends Activity {
             }
 
             updateStatus("Updated at " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(lastMeasurementTimeMs)));
-        } else {
-            SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-            float lastMmol = sp.getFloat(KEY_LAST_MMOL, 0.0f);
-            if (lastMmol <= 0.0f) {
-                textGlucoseMmolValue.setText(useMgDl ? "---" : "--.-");
-                textGlucoseMmolUnit.setText(useMgDl ? "mg/dL" : "mmol/L");
-                textGlucoseMgDl.setText(useMgDl ? "--.- mmol/L" : "-- mg/dL");
-                textGlucoseMmolValue.setTextColor(Color.parseColor("#00E676"));
-            }
-            textSensorDetails.setText(String.format(Locale.US, "Trend: %s | %s", trendStr, statusDesc));
-            updateStatus(statusDesc);
-        }
     }
 
     private void updateStatus(final String text) {

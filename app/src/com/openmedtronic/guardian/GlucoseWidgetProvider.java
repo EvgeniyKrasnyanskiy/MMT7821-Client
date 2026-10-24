@@ -51,6 +51,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         boolean useMgDl = prefs.getBoolean("use_mgdl", false);
         GuardianBleService service = GuardianBleService.getInstance();
         boolean inWarmup = (service != null) ? service.isInWarmup() : prefs.getBoolean("is_in_warmup", false);
+        boolean calPending = (service != null) ? service.isCalPending() : prefs.getBoolean("is_cal_pending", false);
         boolean calRequired = (service != null) ? service.isCalRequired() : prefs.getBoolean("is_cal_required", false);
         long warmupRemainMs = (service != null) ? service.getWarmupRemainingMs() : 0;
 
@@ -82,7 +83,14 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 long hours = totalSec / 3600;
                 long mins = (totalSec % 3600) / 60;
                 views.setTextViewText(R.id.textWidgetSub, String.format(Locale.US, "Warm-up: %02d:%02d", hours, mins));
-            } else if (calRequired && glucoseMmol <= 0f) {
+            } else if (calPending) {
+                views.setTextViewText(R.id.textWidgetGlucose, "--");
+                views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));
+                views.setTextViewText(R.id.textWidgetTrend, "⏳");
+                views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#4FC3F7"));
+                views.setTextViewText(R.id.textWidgetUnit, "");
+                views.setTextViewText(R.id.textWidgetSub, "Processing cal...");
+            } else if (calRequired) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#FFD54F"));
                 views.setTextViewText(R.id.textWidgetTrend, "🩸");
@@ -129,6 +137,9 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
             if (inWarmup) {
                 views.setTextViewText(R.id.textWidgetCal, "⏳ Warm-up");
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#4FC3F7"));
+            } else if (calPending) {
+                views.setTextViewText(R.id.textWidgetCal, "⏳ In progress");
+                views.setTextColor(R.id.textWidgetCal, Color.parseColor("#4FC3F7"));
             } else {
                 long calIntervalMs = 12 * 3600 * 1000L;
                 if (calRequired || lastCalMs <= 0 || (now - lastCalMs) >= calIntervalMs) {
@@ -143,7 +154,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                     } else {
                         views.setTextViewText(R.id.textWidgetCal, String.format(Locale.US, "🩸 %dm", Math.max(1, remainMins)));
                     }
-                    views.setTextColor(R.id.textWidgetCal, Color.parseColor("#FFB300"));
+                    views.setTextColor(R.id.textWidgetCal, remainHours <= 2 ? Color.parseColor("#FFAB00") : Color.parseColor("#81C784"));
                 }
             }
 

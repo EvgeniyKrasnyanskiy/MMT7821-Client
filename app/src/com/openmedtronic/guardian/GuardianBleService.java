@@ -34,8 +34,12 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -70,7 +74,9 @@ public class GuardianBleService extends Service {
     public static final String KEY_LAST_PACKET_COUNTER = "last_packet_counter";
     public static final String KEY_ALARMS_ENABLED = "alarms_enabled";
     public static final String KEY_ALARM_CAL_ENABLED = "alarm_cal_enabled";
+    public static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     public static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
+    public static final String KEY_IS_CAL_PENDING = "is_cal_pending";
 
     private static final String KEY_APP_KEY = "app_key";
     private static final String KEY_IS_PAIRED = "is_paired";
@@ -184,6 +190,7 @@ public class GuardianBleService extends Service {
     private long sensorStartTimeMs = 0;
     private boolean isInWarmup = false;
     private boolean isCalRequired = false;
+    private boolean isCalPending = false;
     private long warmupStartTimeMs = 0;
 
     // Alarm ringtone control & background logs
@@ -238,6 +245,7 @@ public class GuardianBleService extends Service {
         }
 
         loadSavedState();
+        loadLogFromFile();
         createNotificationChannel();
         startForegroundWithNotification();
 
@@ -336,6 +344,7 @@ public class GuardianBleService extends Service {
         sensorStartTimeMs = sp.getLong(KEY_SENSOR_START_TIME, 0);
         isInWarmup = sp.getBoolean(KEY_IS_IN_WARMUP, false);
         isCalRequired = sp.getBoolean(KEY_IS_CAL_REQUIRED, false);
+        isCalPending = sp.getBoolean(KEY_IS_CAL_PENDING, false);
         warmupStartTimeMs = sp.getLong(KEY_WARMUP_START_TIME, 0);
 
         lastMeasurementTimeMs = sp.getLong(KEY_LAST_MEASUREMENT_TIME, 0);
@@ -448,19 +457,12 @@ public class GuardianBleService extends Service {
             } else {
                 contentText = "Waiting for sensor connection...";
             }
+        } else if (isCalPending) {
+            title = "⏳ Calibration Processing";
+            contentText = "Transmitter calculating calibration (5–15 min) | 🔋 " + batStr;
         } else if (isCalRequired) {
-            boolean hasFreshGlucose = (lastGlucoseMmol > 0.0f && elapsedMs <= 15 * 60_000L);
-            if (hasFreshGlucose) {
-                boolean useMgDl = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getBoolean(KEY_USE_MGDL, false);
-                String valStr = useMgDl
-                        ? String.format(Locale.US, "%.0f %s mg/dL", lastGlucoseMgDl, arrow)
-                        : String.format(Locale.US, "%.1f %s mmol/L", lastGlucoseMmol, arrow);
-                title = String.format(Locale.US, "%s • 🩸 Calibrate", valStr);
-                contentText = "Calibration needed | 🔋 " + batStr;
-            } else {
-                title = (lastCalTime > 0) ? "🩸 Calibration Required" : "🩸 1st Calibration Required";
-                contentText = "Enter blood glucose reading | 🔋 " + batStr;
-            }
+            title = (lastCalTime > 0) ? "🩸 Calibration Required" : "🩸 1st Calibration Required";
+            contentText = "Enter blood glucose reading | 🔋 " + batStr;
         } else if (isInWarmup) {
             long remainingWarmupMs = Math.max(0L, 7_200_000L - (now - warmupStartTimeMs));
             long remTotalSec = remainingWarmupMs / 1000L;
@@ -537,6 +539,7 @@ public class GuardianBleService extends Service {
                 log("Watchdog: connection lost. Reconnecting...");
                 connectToDevice(targetMac);
             }
+            checkMissedReadings();
             mainHandler.postDelayed(this, 10_000L);
         }
     };
@@ -649,10 +652,9 @@ public class GuardianBleService extends Service {
         }
         int bgMgDl = Math.round(bgMmol * 18.0182f);
         long now = System.currentTimeMillis();
-        isCalRequired = false;
+        isCalPending = true;
         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
-                .putLong(KEY_CAL_TIME, now)
-                .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                .putBoolean(KEY_IS_CAL_PENDING, true)
                 .apply();
 
         // Single source of truth for calibration storage
@@ -666,6 +668,7 @@ public class GuardianBleService extends Service {
                     bgMgDl, bgMmol, GuardianCrypto.bytesToHex(calPacket)));
             sendCriticalOps(bluetoothGatt, calPacket);
         }
+        updateStatus("⏳ Calibration sent, processing...");
         updateNotification();
     }
 
@@ -1552,6 +1555,11 @@ public class GuardianBleService extends Service {
                 boolean sensorError = (statusBits & STATUS_BIT_SENSOR_ERROR) != 0;
 
                 isCalRequired = calRequired;
+                if (calPending) {
+                    isCalPending = true;
+                } else if (calRequired) {
+                    isCalPending = false;
+                }
 
                 if (inWarmup) {
                     isInWarmup = true;
@@ -1561,6 +1569,7 @@ public class GuardianBleService extends Service {
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                             .putBoolean(KEY_IS_IN_WARMUP, true)
                             .putBoolean(KEY_IS_CAL_REQUIRED, isCalRequired)
+                            .putBoolean(KEY_IS_CAL_PENDING, isCalPending)
                             .putLong(KEY_WARMUP_START_TIME, warmupStartTimeMs)
                             .apply();
                 } else {
@@ -1568,6 +1577,7 @@ public class GuardianBleService extends Service {
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                             .putBoolean(KEY_IS_IN_WARMUP, false)
                             .putBoolean(KEY_IS_CAL_REQUIRED, isCalRequired)
+                            .putBoolean(KEY_IS_CAL_PENDING, isCalPending)
                             .apply();
                 }
 
@@ -1600,9 +1610,16 @@ public class GuardianBleService extends Service {
                 float glucoseMmol = 0.0f;
                 float glucoseMgDl = 0.0f;
 
-                if (!inWarmup && rawVal34 >= 20 && rawVal34 <= 600) {
+                if (!inWarmup && !calRequired && !isCalPending && rawVal34 >= 20 && rawVal34 <= 600) {
                     glucoseMgDl = (float) rawVal34;
                     glucoseMmol = glucoseMgDl / 18.0182f;
+                    if (isCalPending) {
+                        isCalPending = false;
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_IS_CAL_PENDING, false)
+                                .putLong(KEY_CAL_TIME, System.currentTimeMillis())
+                                .apply();
+                    }
                 } else if (rawVal34 == 65535) {
                     log("Transmitter processing calibration / stabilizing signal (rawVal=65535)...");
                 }
@@ -1704,16 +1721,40 @@ public class GuardianBleService extends Service {
                 String calStatusDesc;
                 switch (statusCode) {
                     case 0:
+                        isCalPending = false;
+                        isCalRequired = false;
+                        long calSuccessTime = System.currentTimeMillis();
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_IS_CAL_PENDING, false)
+                                .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                                .putLong(KEY_CAL_TIME, calSuccessTime)
+                                .apply();
                         calStatusDesc = String.format(Locale.US, "✓ Calibration (%d mg/dL, %.1f mmol/L) ACCEPTED! Processing takes 5-15 min...",
                                 acceptedBg, acceptedBg / 18.0182f);
                         break;
                     case 1:
+                        isCalPending = false;
+                        isCalRequired = true;
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_IS_CAL_PENDING, false)
+                                .putBoolean(KEY_IS_CAL_REQUIRED, true)
+                                .apply();
                         calStatusDesc = String.format(Locale.US, "❌ Calibration (%d mg/dL) REJECTED by transmitter", acceptedBg);
                         break;
                     case 2:
+                        isCalPending = false;
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_IS_CAL_PENDING, false)
+                                .apply();
                         calStatusDesc = "❌ Sensor error: Transmitter requests sensor replacement (CHANGE_SENSOR)";
                         break;
                     case 3:
+                        isCalPending = false;
+                        isCalRequired = true;
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_IS_CAL_PENDING, false)
+                                .putBoolean(KEY_IS_CAL_REQUIRED, true)
+                                .apply();
                         calStatusDesc = "⏳ Calibration was not calculated (NOT_CALCULATED)";
                         break;
                     default:
@@ -1722,6 +1763,7 @@ public class GuardianBleService extends Service {
                 }
                 log(">>> " + calStatusDesc);
                 updateStatus(calStatusDesc);
+                updateNotification();
             }
         } catch (Exception e) {
             log("Error decrypting CAL_STATUS_DATA: " + e.getMessage());
@@ -1846,15 +1888,89 @@ public class GuardianBleService extends Service {
         });
     }
 
+    private File getLogFile() {
+        return new File(getFilesDir(), "guardian_log.txt");
+    }
+
+    private void pruneLogFile(File logFile) {
+        try {
+            long len = logFile.length();
+            long keepBytes = 500_000L;
+            if (len <= keepBytes) return;
+            File tempFile = new File(getFilesDir(), "guardian_log.tmp");
+            try (RandomAccessFile raf = new RandomAccessFile(logFile, "r");
+                 FileWriter fw = new FileWriter(tempFile)) {
+                raf.seek(len - keepBytes);
+                raf.readLine(); // skip first partial line
+                String line;
+                while ((line = raf.readLine()) != null) {
+                    fw.write(line);
+                    fw.write("\n");
+                }
+            }
+            if (tempFile.exists() && tempFile.length() > 0) {
+                if (logFile.delete()) {
+                    tempFile.renameTo(logFile);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private synchronized void writeLogToFile(String line) {
+        try {
+            File logFile = getLogFile();
+            if (logFile.exists() && logFile.length() > 1_500_000L) {
+                pruneLogFile(logFile);
+            }
+            try (FileWriter fw = new FileWriter(logFile, true)) {
+                fw.write(line);
+                fw.write("\n");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void loadLogFromFile() {
+        try {
+            File logFile = getLogFile();
+            if (!logFile.exists() || logFile.length() == 0) return;
+            long len = logFile.length();
+            long readBytes = Math.min(len, 350_000L);
+            try (RandomAccessFile raf = new RandomAccessFile(logFile, "r")) {
+                if (len > readBytes) {
+                    raf.seek(len - readBytes);
+                    raf.readLine();
+                }
+                byte[] b = new byte[(int) (len - raf.getFilePointer())];
+                raf.readFully(b);
+                String loaded = new String(b, StandardCharsets.UTF_8).trim();
+                if (!loaded.isEmpty()) {
+                    synchronized (logBuffer) {
+                        logBuffer.setLength(0);
+                        logBuffer.append(loaded);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     public void log(final String msg) {
         Log.i(TAG, msg);
-        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+        String time = new SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault()).format(new Date());
+        final String formattedLine = "[" + time + "] " + msg;
         synchronized (logBuffer) {
-            logBuffer.append("\n[").append(time).append("] ").append(msg);
-            if (logBuffer.length() > 6000) {
-                logBuffer.delete(0, logBuffer.length() - 4000);
+            if (logBuffer.length() > 0) logBuffer.append("\n");
+            logBuffer.append(formattedLine);
+            if (logBuffer.length() > 500_000) {
+                logBuffer.delete(0, 150_000);
             }
         }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                writeLogToFile(formattedLine);
+            }
+        }).start();
+
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -1930,6 +2046,10 @@ public class GuardianBleService extends Service {
         return isCalRequired;
     }
 
+    public boolean isCalPending() {
+        return isCalPending;
+    }
+
     public long getWarmupStartTimeMs() {
         return warmupStartTimeMs;
     }
@@ -1995,7 +2115,7 @@ public class GuardianBleService extends Service {
                 alarmTitle = String.format(Locale.US, "⚠️ HIGH GLUCOSE: %.1f mmol/L", mmol);
                 alarmText = String.format(Locale.US, "Glucose is above 10.0 mmol/L (%d mg/dL). Check ketones and insulin.", Math.round(mmol * 18.0182f));
             }
-        } else if (calRequired && sp.getBoolean(KEY_ALARM_CAL_ENABLED, true)) {
+        } else if (calRequired && !isCalPending && sp.getBoolean(KEY_ALARM_CAL_ENABLED, true)) {
             alarmType = 3;
             alarmTitle = "🩸 Sensor Calibration Required";
             alarmText = "Transmitter requires fingerstick BG calibration from meter to continue monitoring.";
@@ -2003,11 +2123,7 @@ public class GuardianBleService extends Service {
 
         if (alarmType == 0) {
             if (lastAlarmType != 0) {
-                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                if (nm != null) {
-                    nm.cancel(NOTIFICATION_ALARM_ID);
-                }
-                lastAlarmType = 0;
+                cancelAlarm();
             }
             return;
         }
@@ -2022,6 +2138,56 @@ public class GuardianBleService extends Service {
         log("ALARM TRIGGERED! Type=" + alarmType + " (" + alarmTitle + ")");
 
         triggerAlarmNotification(alarmTitle, alarmText);
+    }
+
+    private void checkMissedReadings() {
+        SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        boolean alarmsEnabled = sp.getBoolean(KEY_ALARMS_ENABLED, true);
+        boolean missedEnabled = sp.getBoolean(KEY_ALARM_MISSED_READINGS_ENABLED, true);
+        if (!alarmsEnabled || !missedEnabled) {
+            if (lastAlarmType == 4) {
+                cancelAlarm();
+            }
+            return;
+        }
+
+        if (!isPaired || isInWarmup || userInitiatedDisconnect) {
+            if (lastAlarmType == 4) {
+                cancelAlarm();
+            }
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long snoozeUntil = sp.getLong(KEY_SNOOZE_UNTIL_MS, 0L);
+        if (now < snoozeUntil) {
+            return;
+        }
+
+        if (lastMeasurementTimeMs > 0 && (now - lastMeasurementTimeMs) > 20 * 60_000L) {
+            long missedMins = (now - lastMeasurementTimeMs) / 60_000L;
+            String alarmTitle = "⚠️ Sensor Signal Lost";
+            String alarmText = String.format(Locale.US, "No sensor data for %d min. Check transmitter and Bluetooth.", missedMins);
+
+            if (lastAlarmType == 4 && (now - lastAlarmTriggerTimeMs) < 15 * 60_000L) {
+                return;
+            }
+
+            lastAlarmType = 4;
+            lastAlarmTriggerTimeMs = now;
+            log("ALARM TRIGGERED! Type=4 (Missed readings for " + missedMins + " min)");
+            triggerAlarmNotification(alarmTitle, alarmText);
+        } else if (lastAlarmType == 4) {
+            cancelAlarm();
+        }
+    }
+
+    private void cancelAlarm() {
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.cancel(NOTIFICATION_ALARM_ID);
+        }
+        lastAlarmType = 0;
     }
 
     public void stopAlarmSound() {
