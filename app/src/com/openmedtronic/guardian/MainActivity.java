@@ -239,14 +239,25 @@ public class MainActivity extends Activity {
                     }
                     textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                 } else {
-                    textCountdown.setText(lastCalTime > 0 ? "Calibration Needed" : "Waiting for 1st Calibration");
-                    textCountdown.setTextColor(Color.parseColor("#FFD54F"));
-                    if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
-                        btnQuickCalibrate.setVisibility(View.VISIBLE);
+                    if (calReq) {
+                        textCountdown.setText(lastCalTime > 0 ? "🩸 Calibration Needed" : "Waiting for 1st Calibration");
+                        textCountdown.setTextColor(Color.parseColor("#FFD54F"));
+                        if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
+                            btnQuickCalibrate.setVisibility(View.VISIBLE);
+                        }
+                    } else {
+                        textCountdown.setText("Warm-up complete, waiting for reading...");
+                        textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
+                        if (btnQuickCalibrate != null) {
+                            btnQuickCalibrate.setVisibility(View.GONE);
+                        }
                     }
                 }
                 updateStaleState(false);
             } else if (lastMeasurementTimeMs > 0) {
+                if (btnQuickCalibrate != null && !calReq) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
                 long elapsedMs = System.currentTimeMillis() - lastMeasurementTimeMs;
                 long remainingSec = (300_000L - elapsedMs) / 1000L;
                 if (remainingSec > 0) {
@@ -259,6 +270,9 @@ public class MainActivity extends Activity {
                 textCountdown.setTextColor(Color.parseColor("#CCCCCC"));
                 updateStaleState(elapsedMs > 11 * 60_000L);
             } else {
+                if (btnQuickCalibrate != null && !calReq) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
                 textCountdown.setText("Next reading: --:--");
                 textCountdown.setTextColor(Color.parseColor("#CCCCCC"));
                 updateStaleState(false);
@@ -810,10 +824,16 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                long calTime = sp.getLong(KEY_CAL_TIME, 0);
-                if (calReq || calTime <= 0) {
+                if (calReq) {
                     textCalCountdown.setText("🩸 Cal now");
                     textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
+                    return;
+                }
+
+                long calTime = sp.getLong(KEY_CAL_TIME, 0);
+                if (calTime <= 0) {
+                    textCalCountdown.setText("🩸 --");
+                    textCalCountdown.setTextColor(Color.parseColor("#888888"));
                     return;
                 }
 
@@ -833,8 +853,8 @@ public class MainActivity extends Activity {
                         textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
                     }
                 } else {
-                    textCalCountdown.setText("🩸 Cal now");
-                    textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
+                    textCalCountdown.setText("🩸 12h+");
+                    textCalCountdown.setTextColor(Color.parseColor("#FFAB00"));
                 }
             }
         });
@@ -933,7 +953,7 @@ public class MainActivity extends Activity {
         rowBgActions.setLayoutParams(rowBgLp);
 
         Button btnCalibrateInSettings = new Button(this);
-        btnCalibrateInSettings.setText("🩸 Calibrate");
+        btnCalibrateInSettings.setText("🩸 Calibrate (Early)");
         btnCalibrateInSettings.setTextColor(inWarmup ? Color.parseColor("#777777") : Color.WHITE);
         styleSettingsButton(btnCalibrateInSettings, Color.parseColor(inWarmup ? "#222222" : "#2A2A2A"), false);
         btnCalibrateInSettings.setEnabled(!inWarmup);
@@ -2406,9 +2426,35 @@ public class MainActivity extends Activity {
             updateStatus(statusDesc);
             return;
         }
-        if (serviceCalReq || rawVal == 65535 || mmol <= 0.0f) {
+        if (serviceCalReq) {
             displayCalibrationRequired(rawVal, statusDesc);
             updateStatus(statusDesc);
+            return;
+        }
+
+        if (rawVal == 65535 || mmol <= 0.0f) {
+            isInWarmup = false;
+            isCalPending = false;
+            isCalRequired = false;
+            currentMmol = 0.0f;
+            lastRawIsig = rawVal;
+            lastTrendRate = Double.NaN;
+            lastMeasurementTimeMs = System.currentTimeMillis();
+
+            textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            textGlucoseMmolValue.setText("--");
+            textGlucoseMmolValue.setTextColor(Color.parseColor("#888888"));
+            textGlucoseMmolUnit.setVisibility(View.GONE);
+            if (textTrendArrow != null) {
+                textTrendArrow.setVisibility(View.GONE);
+            }
+            textGlucoseMgDl.setText("Waiting for sensor reading...");
+            textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
+            textSensorDetails.setText((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Waiting for sensor...");
+            if (btnQuickCalibrate != null) {
+                btnQuickCalibrate.setVisibility(View.GONE);
+            }
+            updateStatus(statusDesc != null ? statusDesc : "Waiting for sensor...");
             return;
         }
 
@@ -2458,6 +2504,10 @@ public class MainActivity extends Activity {
                 }
                 textCountdown.setText("🩸 Calibration Needed");
                 textCountdown.setTextColor(Color.parseColor("#FFD54F"));
+            } else {
+                if (btnQuickCalibrate != null) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
             }
 
             if ("Backfill History".equals(statusDesc)) {
