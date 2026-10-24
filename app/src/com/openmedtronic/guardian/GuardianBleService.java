@@ -318,15 +318,18 @@ public class GuardianBleService extends Service {
         this.listener = l;
         if (listener != null) {
             stopAlarmSound();
-            listener.onConnectionStateChanged(bluetoothGatt != null);
-            listener.onBatteryReceived(batteryLevelPercent);
+            boolean isConn = (bluetoothGatt != null);
+            listener.onConnectionStateChanged(isConn);
+            listener.onBatteryReceived(isConn ? batteryLevelPercent : -1);
             listener.onHandshakeStateChanged(handshakeState);
-            if (isInWarmup) {
-                listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
-            } else if (isCalRequired && lastGlucoseMmol <= 0.0f) {
-                listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
-            } else if (lastGlucoseMmol > 0.0f) {
-                listener.onGlucoseReceived(lastGlucoseMmol, lastGlucoseMgDl, lastRawVal, lastTrendRate, lastStatusDescription);
+            if (isConn) {
+                if (isInWarmup) {
+                    listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
+                } else if (isCalRequired && lastGlucoseMmol <= 0.0f) {
+                    listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
+                } else if (lastGlucoseMmol > 0.0f) {
+                    listener.onGlucoseReceived(lastGlucoseMmol, lastGlucoseMgDl, lastRawVal, lastTrendRate, lastStatusDescription);
+                }
             }
         }
     }

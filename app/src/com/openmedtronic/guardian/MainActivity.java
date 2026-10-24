@@ -209,6 +209,14 @@ public class MainActivity extends Activity {
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
+                if (textGlucoseMgDl != null && !"Disconnected".equals(textGlucoseMgDl.getText().toString())) {
+                    textGlucoseMgDl.setText("Disconnected");
+                    textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
+                }
+                if (textSensorDetails != null && !"Transmitter disconnected".equals(textSensorDetails.getText().toString())) {
+                    textSensorDetails.setText("Transmitter disconnected");
+                    textSensorDetails.setTextColor(Color.parseColor("#888888"));
+                }
                 updateStaleState(false);
             } else if (calPending) {
                 textCountdown.setText("⏳ Waiting for calibration acceptance...");
@@ -517,6 +525,11 @@ public class MainActivity extends Activity {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    GuardianBleService s = GuardianBleService.getInstance();
+                    if (s == null || !s.isDeviceConnected()) {
+                        displayDisconnected();
+                        return;
+                    }
                     displayGlucose(mmol, mgDl, rawVal, trend, statusDesc);
                 }
             });
@@ -2299,6 +2312,7 @@ public class MainActivity extends Activity {
         }
         if (textSensorDetails != null) {
             textSensorDetails.setText("Transmitter disconnected");
+            textSensorDetails.setTextColor(Color.parseColor("#888888"));
         }
         if (textCountdown != null) {
             textCountdown.setText("Transmitter Disconnected");
@@ -2307,6 +2321,7 @@ public class MainActivity extends Activity {
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);
         }
+        updateStatus("Disconnected");
         updateBatteryDisplay(-1);
         updateSensorDaysDisplay();
         updateCalCountdownDisplay();
@@ -2418,17 +2433,14 @@ public class MainActivity extends Activity {
 
         if (serviceInWarmup) {
             displayWarmup(rawVal, statusDesc);
-            updateStatus(statusDesc);
             return;
         }
         if (serviceCalPending) {
             displayCalibrationPending(statusDesc);
-            updateStatus(statusDesc);
             return;
         }
         if (serviceCalReq) {
             displayCalibrationRequired(rawVal, statusDesc);
-            updateStatus(statusDesc);
             return;
         }
 
@@ -2450,11 +2462,13 @@ public class MainActivity extends Activity {
             }
             textGlucoseMgDl.setText("Waiting for sensor reading...");
             textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
-            textSensorDetails.setText((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Waiting for sensor...");
+            String sensorState = "Normal".equals(statusDesc) ? "Sensor OK" : ((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Waiting for sensor...");
+            textSensorDetails.setText(sensorState);
+            textSensorDetails.setTextColor(Color.parseColor("#AAAAAA"));
             if (btnQuickCalibrate != null) {
                 btnQuickCalibrate.setVisibility(View.GONE);
             }
-            updateStatus(statusDesc != null ? statusDesc : "Waiting for sensor...");
+            updateStatus("Connected to transmitter");
             return;
         }
 
@@ -2496,7 +2510,9 @@ public class MainActivity extends Activity {
                 textGlucoseMgDl.setText(String.format(Locale.US, "%.0f mg/dL", mgDl));
             }
             textGlucoseMgDl.setTextColor(Color.parseColor("#CCCCCC"));
-            textSensorDetails.setText(String.format(Locale.US, "Trend: %s | %s", trendStr, statusDesc));
+            String sensorState = "Normal".equals(statusDesc) ? "Sensor OK" : ((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Sensor OK");
+            textSensorDetails.setText(String.format(Locale.US, "Trend: %s | %s", trendStr, sensorState));
+            textSensorDetails.setTextColor(Color.parseColor("#AAAAAA"));
 
             if (serviceCalReq) {
                 if (btnQuickCalibrate != null) {
