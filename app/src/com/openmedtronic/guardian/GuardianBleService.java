@@ -192,6 +192,7 @@ public class GuardianBleService extends Service {
     private boolean isCalRequired = false;
     private boolean isCalPending = false;
     private long warmupStartTimeMs = 0;
+    private boolean isGattConnected = false;
 
     // Alarm ringtone control & background logs
     private Ringtone activeRingtone;
@@ -588,6 +589,7 @@ public class GuardianBleService extends Service {
         }
 
         isConnecting = true;
+        isGattConnected = false;
         acquireWakeLockBriefly(10_000L);
         updateStatus("Connecting to " + targetMac + "...");
         log("Connecting to " + targetMac + " (isPaired=" + isPaired + ")...");
@@ -607,6 +609,7 @@ public class GuardianBleService extends Service {
     public synchronized void disconnect() {
         userInitiatedDisconnect = true;
         isConnecting = false;
+        isGattConnected = false;
         clearGattQueue();
         if (bluetoothGatt != null) {
             try {
@@ -747,6 +750,7 @@ public class GuardianBleService extends Service {
             log("ConnectionStateChange: status=" + status + ", newState=" + newState);
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 isConnecting = false;
+                isGattConnected = true;
                 clearGattQueue();
                 updateStatus("Connected. Requesting MTU...");
                 log("GATT Connected! Requesting MTU 512...");
@@ -772,6 +776,7 @@ public class GuardianBleService extends Service {
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 isConnecting = false;
+                isGattConnected = false;
                 clearGattQueue();
                 if (bluetoothGatt != null) {
                     try {
@@ -2016,7 +2021,7 @@ public class GuardianBleService extends Service {
     }
 
     public boolean isDeviceConnected() {
-        return bluetoothGatt != null;
+        return isGattConnected && bluetoothGatt != null;
     }
 
     public boolean isDeviceConnecting() {

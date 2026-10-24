@@ -107,11 +107,11 @@ public class MainActivity extends Activity {
     private TextView textGlucoseMgDl;
     private TextView textSensorDetails;
     private Button btnQuickCalibrate;
-    private Button btnQuickLogBg;
     private Button btnQuickTherapy;
     private GlucoseChartView glucoseChart;
     private LinearLayout logsContainer;
-    private TextView btnHideLogs;
+    private View headerLogs;
+    private TextView btnToggleLogs;
     private TextView textLogs;
     private ScrollView scrollLogs;
 
@@ -409,28 +409,27 @@ public class MainActivity extends Activity {
         textSensorDetails = findViewById(R.id.textSensorDetails);
         glucoseChart = findViewById(R.id.glucoseChart);
         logsContainer = findViewById(R.id.logsContainer);
-        btnHideLogs = findViewById(R.id.btnHideLogs);
+        headerLogs = findViewById(R.id.headerLogs);
+        btnToggleLogs = findViewById(R.id.btnToggleLogs);
         textLogs = findViewById(R.id.textLogs);
         scrollLogs = findViewById(R.id.scrollLogs);
         btnQuickCalibrate = findViewById(R.id.btnQuickCalibrate);
-        btnQuickLogBg = findViewById(R.id.btnQuickLogBg);
         btnQuickTherapy = findViewById(R.id.btnQuickTherapy);
+
+        View.OnClickListener toggleLogsListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleLogsExpanded();
+            }
+        };
+        if (headerLogs != null) headerLogs.setOnClickListener(toggleLogsListener);
+        if (btnToggleLogs != null) btnToggleLogs.setOnClickListener(toggleLogsListener);
 
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     showCalibrationDialog();
-                }
-            });
-        }
-
-        if (btnQuickLogBg != null) {
-            styleSettingsButton(btnQuickLogBg, Color.parseColor("#252525"), false);
-            btnQuickLogBg.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showLogBgDialog();
                 }
             });
         }
@@ -474,17 +473,6 @@ public class MainActivity extends Activity {
                 showSettingsDialog();
             }
         });
-
-        if (btnHideLogs != null) {
-            btnHideLogs.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showLogs = false;
-                    getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putBoolean(KEY_SHOW_LOGS, false).apply();
-                    applyLogsVisibility(false);
-                }
-            });
-        }
 
         if (checkPermissions()) {
             startBleService();
@@ -777,9 +765,21 @@ public class MainActivity extends Activity {
         textSensorDetails.setText(String.format(Locale.US, "Trend: %s | %s", trendStr, savedStatus));
     }
 
+    private void toggleLogsExpanded() {
+        isLogsExpanded = !isLogsExpanded;
+        if (scrollLogs != null) {
+            scrollLogs.setVisibility(isLogsExpanded ? View.VISIBLE : View.GONE);
+        }
+        if (btnToggleLogs != null) {
+            btnToggleLogs.setText(isLogsExpanded ? "▼" : "▲");
+        }
+    }
+
     private void applyLogsVisibility(boolean visible) {
         showLogs = visible;
         if (logsContainer != null) logsContainer.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (scrollLogs != null) scrollLogs.setVisibility((visible && isLogsExpanded) ? View.VISIBLE : View.GONE);
+        if (btnToggleLogs != null) btnToggleLogs.setText(isLogsExpanded ? "▼" : "▲");
     }
 
     private void updateTransmitterNameDisplay() {
@@ -958,43 +958,17 @@ public class MainActivity extends Activity {
         layout.addView(lblCalStatus);
 
         boolean inWarmup = isInWarmup || (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isInWarmup());
-        LinearLayout rowBgActions = new LinearLayout(this);
-        rowBgActions.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams rowBgLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rowBgLp.topMargin = (int) (6 * getResources().getDisplayMetrics().density);
-        rowBgActions.setLayoutParams(rowBgLp);
 
         Button btnCalibrateInSettings = new Button(this);
         btnCalibrateInSettings.setText("🩸 Calibrate (Early)");
         btnCalibrateInSettings.setTextColor(inWarmup ? Color.parseColor("#777777") : Color.WHITE);
         styleSettingsButton(btnCalibrateInSettings, Color.parseColor(inWarmup ? "#222222" : "#2A2A2A"), false);
         btnCalibrateInSettings.setEnabled(!inWarmup);
-        LinearLayout.LayoutParams btnHalfLp1 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
-        btnHalfLp1.rightMargin = dpToPx(4);
-        btnCalibrateInSettings.setLayoutParams(btnHalfLp1);
-        rowBgActions.addView(btnCalibrateInSettings);
-
-        Button btnLogBgInSettings = new Button(this);
-        btnLogBgInSettings.setText("💉 Log BG");
-        btnLogBgInSettings.setTextColor(Color.WHITE);
-        styleSettingsButton(btnLogBgInSettings, Color.parseColor("#2A2A2A"), false);
-        LinearLayout.LayoutParams btnHalfLp2 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
-        btnHalfLp2.leftMargin = dpToPx(4);
-        btnLogBgInSettings.setLayoutParams(btnHalfLp2);
-        rowBgActions.addView(btnLogBgInSettings);
-
-        layout.addView(rowBgActions);
-
-        final Button btnTherapyInSettings = new Button(this);
-        btnTherapyInSettings.setText("💉/🍞 Log Therapy (Insulin & Carbs)");
-        btnTherapyInSettings.setTextColor(Color.WHITE);
-        styleSettingsButton(btnTherapyInSettings, Color.parseColor("#1E2A38"), false);
-        LinearLayout.LayoutParams btnTherapyLp = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams btnCalLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnTherapyLp.topMargin = dpToPx(6);
-        btnTherapyInSettings.setLayoutParams(btnTherapyLp);
-        layout.addView(btnTherapyInSettings);
+        btnCalLp.topMargin = dpToPx(8);
+        btnCalibrateInSettings.setLayoutParams(btnCalLp);
+        layout.addView(btnCalibrateInSettings);
 
         TextView lblMac = new TextView(this);
         final boolean isConn = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
@@ -1248,22 +1222,6 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 dialog.dismiss();
                 showCalibrationDialog();
-            }
-        });
-
-        btnLogBgInSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-                showLogBgDialog();
-            }
-        });
-
-        btnTherapyInSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-                showTherapyDialog();
             }
         });
 
@@ -1957,6 +1915,28 @@ public class MainActivity extends Activity {
         }
         layout.addView(rowCarbsPresets);
 
+        // Blood Glucose (Meter) Input
+        TextView lblBg = new TextView(this);
+        String unitStr = useMgDl ? "mg/dL" : "mmol/L";
+        lblBg.setText("🩸 Blood Glucose (Meter, " + unitStr + ", Optional):");
+        lblBg.setTextColor(Color.parseColor("#FF8A80"));
+        lblBg.setTextSize(13);
+        layout.addView(lblBg);
+
+        final EditText editBg = new EditText(this);
+        editBg.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        editBg.setHint(useMgDl ? "e.g. 100" : "e.g. 5.6");
+        editBg.setHintTextColor(Color.GRAY);
+        editBg.setTextColor(Color.WHITE);
+        editBg.setBackgroundColor(Color.parseColor("#282828"));
+        editBg.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
+        LinearLayout.LayoutParams bgLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        bgLp.topMargin = dpToPx(3);
+        bgLp.bottomMargin = dpToPx(12);
+        editBg.setLayoutParams(bgLp);
+        layout.addView(editBg);
+
         // Note Input
         TextView lblNote = new TextView(this);
         lblNote.setText("📝 Note / Meal (Optional):");
@@ -2009,14 +1989,38 @@ public class MainActivity extends Activity {
         layout.addView(rowNotePresets);
 
         new AlertDialog.Builder(this)
-                .setTitle("Log Therapy (Insulin & Carbs)")
+                .setTitle("Log Therapy & BG")
                 .setView(layout)
                 .setPositiveButton("Save", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        String bgStr = editBg.getText().toString().trim().replace(',', '.');
                         String bolusStr = editBolus.getText().toString().trim().replace(',', '.');
                         String carbsStr = editCarbs.getText().toString().trim().replace(',', '.');
                         String note = editNote.getText().toString().trim();
+
+                        float bgMmol = 0f;
+                        if (!bgStr.isEmpty()) {
+                            try {
+                                float enteredBg = Float.parseFloat(bgStr);
+                                if (useMgDl) {
+                                    if (enteredBg < 36.0f || enteredBg > 450.0f) {
+                                        Toast.makeText(MainActivity.this, "BG must be between 36 and 450 mg/dL", Toast.LENGTH_SHORT).show();
+                                        return;
+                                    }
+                                    bgMmol = enteredBg / 18.0182f;
+                                } else {
+                                    if (enteredBg < 2.0f || enteredBg > 25.0f) {
+                                        Toast.makeText(MainActivity.this, "BG must be between 2.0 and 25.0 mmol/L", Toast.LENGTH_SHORT).show();
+                                        return;
+                                    }
+                                    bgMmol = enteredBg;
+                                }
+                            } catch (NumberFormatException e) {
+                                Toast.makeText(MainActivity.this, "Invalid BG value", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                        }
 
                         float bolus = 0f;
                         if (!bolusStr.isEmpty()) {
@@ -2038,8 +2042,8 @@ public class MainActivity extends Activity {
                             }
                         }
 
-                        if (bolus <= 0f && carbs <= 0f) {
-                            Toast.makeText(MainActivity.this, "Enter insulin or carbohydrates", Toast.LENGTH_SHORT).show();
+                        if (bgMmol <= 0f && bolus <= 0f && carbs <= 0f && note.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Enter BG, insulin, carbohydrates or note", Toast.LENGTH_SHORT).show();
                             return;
                         }
 
@@ -2054,14 +2058,29 @@ public class MainActivity extends Activity {
 
                         long eventTime = selectedCalendar.getTimeInMillis();
                         GlucoseHistoryStorage storage = GlucoseHistoryStorage.getInstance(MainActivity.this);
-                        storage.saveTherapy(eventTime, bolus, carbs, note);
 
-                        glucoseChart.setTherapyEntries(storage.getTherapyHistory());
+                        if (bgMmol > 0f) {
+                            storage.addManualBgPoint(eventTime, bgMmol);
+                            glucoseChart.addManualBgPoint(eventTime, bgMmol);
+                            GlucoseWidgetProvider.updateAllWidgets(MainActivity.this);
+                        }
 
-                        StringBuilder sb = new StringBuilder("Therapy recorded [");
+                        if (bolus > 0f || carbs > 0f || !note.isEmpty()) {
+                            storage.saveTherapy(eventTime, bolus, carbs, note);
+                            glucoseChart.setTherapyEntries(storage.getTherapyHistory());
+                        }
+
+                        StringBuilder sb = new StringBuilder("Saved [");
                         sb.append(timeFmt.format(new Date(eventTime))).append("]: ");
-                        if (bolus > 0) sb.append(String.format(Locale.US, "%.1fU insulin ", bolus));
-                        if (carbs > 0) sb.append(String.format(Locale.US, "%.0fg carbs ", carbs));
+                        if (bgMmol > 0f) {
+                            if (useMgDl) {
+                                sb.append(String.format(Locale.US, "BG %d mg/dL ", Math.round(bgMmol * 18.0182f)));
+                            } else {
+                                sb.append(String.format(Locale.US, "BG %.1f mmol/L ", bgMmol));
+                            }
+                        }
+                        if (bolus > 0f) sb.append(String.format(Locale.US, "%.1fU insulin ", bolus));
+                        if (carbs > 0f) sb.append(String.format(Locale.US, "%.0fg carbs ", carbs));
                         if (!note.isEmpty()) sb.append("(").append(note).append(")");
 
                         appendLog(sb.toString().trim());
