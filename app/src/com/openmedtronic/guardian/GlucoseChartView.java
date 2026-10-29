@@ -168,6 +168,7 @@ public class GlucoseChartView extends View {
     private float visibleHours = 4.0f; // Default 4 hours on screen
     private static final float FUTURE_HOURS = 1.0f; // 1 hour headroom ahead of current time
     private boolean userScrolledManually = false;
+    private boolean needsInitialScrollToNow = true;
 
     // Tooltip & Scrubber
     private int selectedPointIndex = -1;
@@ -649,7 +650,12 @@ public class GlucoseChartView extends View {
                 points.remove(0);
             }
         }
-        scrollToNow(false);
+        if (getWidth() > 0) {
+            scrollToNow(false);
+            needsInitialScrollToNow = false;
+        } else {
+            needsInitialScrollToNow = true;
+        }
     }
 
     public synchronized List<Point> getPoints() {
@@ -681,10 +687,11 @@ public class GlucoseChartView extends View {
         selectedPointIndex = -1;
         scrollOffset = 0f;
         userScrolledManually = false;
+        needsInitialScrollToNow = true;
         postInvalidate();
     }
 
-    private void scrollToNow(boolean animate) {
+    public void scrollToNow(boolean animate) {
         float maxScroll = getMaxScroll();
         if (animate) {
             userScrolledManually = false;
@@ -736,6 +743,17 @@ public class GlucoseChartView extends View {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0 && h > 0) {
+            if (!userScrolledManually || needsInitialScrollToNow) {
+                needsInitialScrollToNow = false;
+                scrollToNow(false);
+            }
+        }
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
@@ -751,6 +769,11 @@ public class GlucoseChartView extends View {
         float plotW = w - padLeft - padRight;
         float plotH = h - padTop - padBottom;
         if (plotW <= 0 || plotH <= 0) return;
+
+        if (needsInitialScrollToNow && !userScrolledManually) {
+            needsInitialScrollToNow = false;
+            scrollOffset = getMaxScroll();
+        }
 
         clampScroll();
 

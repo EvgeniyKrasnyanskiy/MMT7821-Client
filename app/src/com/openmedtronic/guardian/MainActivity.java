@@ -92,6 +92,8 @@ public class MainActivity extends Activity {
     private static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     private static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
     private static final String KEY_IS_CAL_PENDING = "is_cal_pending";
+    private static final String KEY_CAL_EXPIRATION_TIME = "cal_expiration_time";
+    private static final String KEY_ACCEPTED_CAL_COUNT = "accepted_cal_count";
     private static final String KEY_USER_DISCONNECTED = "user_disconnected";
 
     private static final int REQ_PERMISSIONS = 101;
@@ -197,6 +199,7 @@ public class MainActivity extends Activity {
                 lastMeasurementTimeMs = service.getLastMeasurementTimeMs();
             }
             updateCalCountdownDisplay();
+            updateSensorDaysDisplay();
 
             boolean inWarmup = (service != null) ? service.isInWarmup() : isInWarmup;
             boolean calPending = (service != null) ? service.isCalPending() : isCalPending;
@@ -322,6 +325,17 @@ public class MainActivity extends Activity {
                 }
                 if (service != null && service.getSensorStartTimeMs() > 0) {
                     sensorStartTimeMs = service.getSensorStartTimeMs();
+                }
+                if (sensorStartTimeMs <= 0) {
+                    sensorStartTimeMs = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_SENSOR_START_TIME, 0);
+                }
+                if (sensorStartTimeMs <= 0) {
+                    sensorStartTimeMs = GlucoseHistoryStorage.getInstance(MainActivity.this).getSensorSessionStartTime();
+                    if (sensorStartTimeMs > 0) {
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putLong(KEY_SENSOR_START_TIME, sensorStartTimeMs)
+                                .apply();
+                    }
                 }
                 if (sensorStartTimeMs <= 0) {
                     textSensorDays.setText("⏳ --d");
@@ -602,6 +616,7 @@ public class MainActivity extends Activity {
                         updateBatteryDisplay(-1);
                         updateSensorDaysDisplay();
                         updateCalCountdownDisplay();
+            updateSensorDaysDisplay();
                         displayDisconnected();
                     }
                 }
@@ -640,6 +655,7 @@ public class MainActivity extends Activity {
                         }
                     }
                     updateCalCountdownDisplay();
+            updateSensorDaysDisplay();
                 }
             });
         }
@@ -685,6 +701,7 @@ public class MainActivity extends Activity {
             updateBatteryDisplay(isConnected ? service.getBatteryLevel() : -1);
             updateSensorDaysDisplay();
             updateCalCountdownDisplay();
+            updateSensorDaysDisplay();
 
             if (!isConnected) {
                 displayDisconnected();
@@ -895,6 +912,7 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                long now = System.currentTimeMillis();
                 long calTime = sp.getLong(KEY_CAL_TIME, 0);
                 if (calTime <= 0) {
                     textCalCountdown.setText("🩸 --");
@@ -902,10 +920,24 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                long now = System.currentTimeMillis();
                 long elapsedMs = now - calTime;
-                long maxCalIntervalMs = 12L * 3600_000L;
-                long remainingMs = maxCalIntervalMs - elapsedMs;
+                int acceptedCount = sp.getInt(KEY_ACCEPTED_CAL_COUNT, 0);
+                long sensorElapsedMs = (sensorStartTimeMs > 0) ? (now - sensorStartTimeMs) : Long.MAX_VALUE;
+                boolean isFirstDay = sensorElapsedMs < 14L * 3600_000L;
+                long maxCalIntervalMs = (acceptedCount <= 1 || isFirstDay) ? (6L * 3600_000L) : (12L * 3600_000L);
+
+                long calExpMs = sp.getLong(KEY_CAL_EXPIRATION_TIME, 0);
+                if (isFirstDay && calExpMs > calTime + 7L * 3600_000L) {
+                    calExpMs = calTime + 6L * 3600_000L;
+                    sp.edit().putLong(KEY_CAL_EXPIRATION_TIME, calExpMs).apply();
+                }
+
+                long remainingMs;
+                if (calExpMs > now) {
+                    remainingMs = calExpMs - now;
+                } else {
+                    remainingMs = maxCalIntervalMs - elapsedMs;
+                }
 
                 if (remainingMs > 0) {
                     long hours = remainingMs / 3600_000L;
@@ -918,7 +950,7 @@ public class MainActivity extends Activity {
                         textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
                     }
                 } else {
-                    textCalCountdown.setText("🩸 12h+");
+                    textCalCountdown.setText("🩸 Due");
                     textCalCountdown.setTextColor(Color.parseColor("#FFAB00"));
                 }
             }
@@ -1697,6 +1729,7 @@ public class MainActivity extends Activity {
                     .putBoolean(KEY_IS_CAL_PENDING, true)
                     .apply();
             updateCalCountdownDisplay();
+            updateSensorDaysDisplay();
 
             // Send calibration to transmitter via GuardianBleService (which also saves to GlucoseHistoryStorage)
             GuardianBleService service = GuardianBleService.getInstance();
@@ -2305,6 +2338,14 @@ public class MainActivity extends Activity {
         List<GlucoseChartView.Point> pts = storage.getChartPoints(288);
         glucoseChart.setPoints(pts);
         glucoseChart.setTherapyEntries(storage.getTherapyHistory());
+        glucoseChart.post(new Runnable() {
+            @Override
+            public void run() {
+                if (glucoseChart != null) {
+                    glucoseChart.scrollToNow(false);
+                }
+            }
+        });
 
         if (!pts.isEmpty()) {
             GlucoseChartView.Point lastPt = pts.get(pts.size() - 1);

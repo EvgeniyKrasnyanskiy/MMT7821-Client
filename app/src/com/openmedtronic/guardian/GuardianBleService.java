@@ -77,6 +77,8 @@ public class GuardianBleService extends Service {
     public static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     public static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
     public static final String KEY_IS_CAL_PENDING = "is_cal_pending";
+    public static final String KEY_CAL_EXPIRATION_TIME = "cal_expiration_time";
+    public static final String KEY_ACCEPTED_CAL_COUNT = "accepted_cal_count";
 
     private static final String KEY_APP_KEY = "app_key";
     private static final String KEY_IS_PAIRED = "is_paired";
@@ -1027,6 +1029,12 @@ public class GuardianBleService extends Service {
                 byte[] raw = characteristic.getValue();
                 log("BACKFILL_DATA raw (" + (raw != null ? raw.length : 0) + "B): " + GuardianCrypto.bytesToHex(raw));
                 handleBackfillData(raw);
+            } else if (uuid.equals(CHAR_SENSOR_EXPIRATION)) {
+                byte[] raw = characteristic.getValue();
+                handleSensorExpiration(raw);
+            } else if (uuid.equals(CHAR_SENSOR_CAL_EXPIRATION)) {
+                byte[] raw = characteristic.getValue();
+                handleSensorCalExpiration(raw);
             }
         }
     };
@@ -1352,23 +1360,28 @@ public class GuardianBleService extends Service {
                     log(opDesc + " Payload: " + GuardianCrypto.bytesToHex(value));
                     updateStatus("Command accepted by transmitter!");
                     if (listener != null) listener.onHandshakeStateChanged(handshakeState);
+                    requestSensorMetadata(gatt);
                 }
             }
         } else if (uuid.equals(CHAR_SENSOR_CONNECTED_STATE)) {
             boolean connected = (value.length > 0 && value[0] != 0);
             log("SENSOR_CONNECTED_STATE: " + (connected ? "Connected (Enlite)" : "Disconnected"));
             if (!connected) {
+                sensorStartTimeMs = 0L;
                 isInWarmup = false;
                 isCalPending = false;
                 isCalRequired = false;
                 warmupStartTimeMs = 0L;
                 getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                        .putLong(KEY_SENSOR_START_TIME, 0L)
+                        .remove(KEY_CAL_EXPIRATION_TIME)
                         .putBoolean(KEY_IS_IN_WARMUP, false)
                         .putBoolean(KEY_IS_CAL_PENDING, false)
                         .putBoolean(KEY_IS_CAL_REQUIRED, false)
                         .putLong(KEY_WARMUP_START_TIME, 0L)
                         .apply();
                 notifyCalibrationStatus(false, false, "Sensor disconnected");
+                if (listener != null) listener.onSensorDaysUpdated(0);
             }
         } else if (uuid.equals(CHAR_MEASUREMENT_READY)) {
             log("MEASUREMENT_READY received: " + GuardianCrypto.bytesToHex(value));
@@ -1398,34 +1411,9 @@ public class GuardianBleService extends Service {
                 }
             }
         } else if (uuid.equals(CHAR_SENSOR_EXPIRATION)) {
-            log("SENSOR_EXPIRATION: " + GuardianCrypto.bytesToHex(value));
-            if (value.length >= 4) {
-                ByteBuffer expBuf = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN);
-                long expSeconds = expBuf.getInt(0) & 0xFFFFFFFFL;
-                if (expSeconds > 0) {
-                    long remainingSec;
-                    if (expSeconds > 1_500_000_000L) {
-                        remainingSec = Math.max(0, expSeconds - (System.currentTimeMillis() / 1000L));
-                    } else if (lastTransmitterTimestampSec > 0 && expSeconds > lastTransmitterTimestampSec) {
-                        remainingSec = expSeconds - lastTransmitterTimestampSec;
-                    } else {
-                        remainingSec = Math.min(6L * 24L * 3600L, expSeconds);
-                    }
-                    remainingSec = Math.max(0, Math.min(6L * 24L * 3600L, remainingSec));
-                    sensorStartTimeMs = System.currentTimeMillis() - ((6L * 24L * 3600L - remainingSec) * 1000L);
-                    if (sensorStartTimeMs > System.currentTimeMillis()) {
-                        sensorStartTimeMs = System.currentTimeMillis();
-                    }
-                    getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
-                            .putLong(KEY_SENSOR_START_TIME, sensorStartTimeMs)
-                            .apply();
-                    long daysUsed = (System.currentTimeMillis() - sensorStartTimeMs) / (24L * 3600_000L);
-                    int daysRemaining = (int) Math.max(0, Math.min(6, 6 - daysUsed));
-                    if (listener != null) listener.onSensorDaysUpdated(daysRemaining);
-                }
-            }
+            handleSensorExpiration(value);
         } else if (uuid.equals(CHAR_SENSOR_CAL_EXPIRATION)) {
-            log("SENSOR_CAL_EXPIRATION: " + GuardianCrypto.bytesToHex(value));
+            handleSensorCalExpiration(value);
         } else if (uuid.equals(CHAR_BACKFILL_READY)) {
             log("BACKFILL_READY: " + GuardianCrypto.bytesToHex(value));
             if (value.length >= 20) {
@@ -1453,6 +1441,88 @@ public class GuardianBleService extends Service {
             }
         } else {
             log("Indication on " + uuid.toString().substring(0, 8) + ": " + GuardianCrypto.bytesToHex(value));
+        }
+    }
+
+    public void requestSensorMetadata(final BluetoothGatt gatt) {
+        // Transmitter reports SENSOR_EXPIRATION and SENSOR_CAL_EXPIRATION exclusively via indications
+        // (GATT read returns status 2 READ_NOT_PERMITTED). Indications are enabled during setup.
+    }
+
+    private void handleSensorExpiration(byte[] value) {
+        if (value == null || value.length < 4) return;
+        log("SENSOR_EXPIRATION: " + GuardianCrypto.bytesToHex(value));
+        ByteBuffer expBuf = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN);
+        long expSeconds = expBuf.getInt(0) & 0xFFFFFFFFL;
+        if (expSeconds == 0xFFFFFFFFL || expSeconds == 0) {
+            log("SENSOR_EXPIRATION: transmitter reported uninitialized (0x" + Long.toHexString(expSeconds) + ")");
+            return;
+        }
+
+        long remainingSec;
+        if (expSeconds > 1_500_000_000L) {
+            remainingSec = Math.max(0, expSeconds - (System.currentTimeMillis() / 1000L));
+        } else if (lastTransmitterTimestampSec > 0 && expSeconds > lastTransmitterTimestampSec) {
+            remainingSec = expSeconds - lastTransmitterTimestampSec;
+        } else {
+            remainingSec = Math.min(6L * 24L * 3600L, expSeconds);
+        }
+        remainingSec = Math.max(0, Math.min(6L * 24L * 3600L, remainingSec));
+        long now = System.currentTimeMillis();
+        sensorStartTimeMs = now - ((6L * 24L * 3600L - remainingSec) * 1000L);
+        if (sensorStartTimeMs > now) {
+            sensorStartTimeMs = now;
+        }
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putLong(KEY_SENSOR_START_TIME, sensorStartTimeMs)
+                .apply();
+        long daysUsed = (now - sensorStartTimeMs) / (24L * 3600_000L);
+        final int daysRemaining = (int) Math.max(0, Math.min(6, 6 - daysUsed));
+        log(String.format(Locale.US, "Sensor lifespan remaining: %dd %dh (%ds)",
+                remainingSec / 86400L, (remainingSec % 86400L) / 3600L, remainingSec));
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (listener != null) listener.onSensorDaysUpdated(daysRemaining);
+            }
+        });
+    }
+
+    private void handleSensorCalExpiration(byte[] value) {
+        if (value == null || value.length < 4) return;
+        log("SENSOR_CAL_EXPIRATION: " + GuardianCrypto.bytesToHex(value));
+        ByteBuffer buf = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN);
+        long expSec = buf.getInt(0) & 0xFFFFFFFFL;
+        if (expSec == 0xFFFFFFFFL || expSec == 0) {
+            log("SENSOR_CAL_EXPIRATION: transmitter reported uninitialized (0x" + Long.toHexString(expSec) + ")");
+            return;
+        }
+
+        long remainingSec;
+        if (expSec > 1_500_000_000L) {
+            remainingSec = Math.max(0, expSec - (System.currentTimeMillis() / 1000L));
+        } else if (lastTransmitterTimestampSec > 0 && expSec > lastTransmitterTimestampSec) {
+            remainingSec = expSec - lastTransmitterTimestampSec;
+        } else {
+            remainingSec = Math.min(24L * 3600L, expSec);
+        }
+
+        if (remainingSec > 0 && remainingSec <= 24L * 3600L) {
+            long calExpTimeMs = System.currentTimeMillis() + (remainingSec * 1000L);
+            getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                    .putLong(KEY_CAL_EXPIRATION_TIME, calExpTimeMs)
+                    .apply();
+            final long hours = remainingSec / 3600L;
+            final long mins = (remainingSec % 3600L) / 60L;
+            log(String.format(Locale.US, "Calibration expiration updated: %dh %dm remaining", hours, mins));
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (listener != null) listener.onCalibrationStatusChanged(isCalPending, isCalRequired, "Cal in " + hours + "h");
+                    updateNotification();
+                    GlucoseWidgetProvider.updateAllWidgets(GuardianBleService.this);
+                }
+            });
         }
     }
 
@@ -1673,9 +1743,15 @@ public class GuardianBleService extends Service {
                     glucoseMmol = glucoseMgDl / 18.0182f;
                     if (isCalPending) {
                         isCalPending = false;
+                        long calSuccessTime = System.currentTimeMillis();
+                        int acceptedCount = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getInt(KEY_ACCEPTED_CAL_COUNT, 0);
+                        if (acceptedCount == 0) acceptedCount = 1;
+                        long defaultIntervalMs = (acceptedCount <= 1) ? (6L * 3600_000L) : (12L * 3600_000L);
                         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                                 .putBoolean(KEY_IS_CAL_PENDING, false)
-                                .putLong(KEY_CAL_TIME, System.currentTimeMillis())
+                                .putLong(KEY_CAL_TIME, calSuccessTime)
+                                .putLong(KEY_CAL_EXPIRATION_TIME, calSuccessTime + defaultIntervalMs)
+                                .putInt(KEY_ACCEPTED_CAL_COUNT, acceptedCount)
                                 .apply();
                         notifyCalibrationStatus(false, false, "Calibration completed");
                     }
@@ -1783,10 +1859,15 @@ public class GuardianBleService extends Service {
                         isCalPending = false;
                         isCalRequired = false;
                         long calSuccessTime = System.currentTimeMillis();
+                        int acceptedCount = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getInt(KEY_ACCEPTED_CAL_COUNT, 0) + 1;
+                        long defaultIntervalMs = (acceptedCount <= 1) ? (6L * 3600_000L) : (12L * 3600_000L);
+                        long defaultExpTime = calSuccessTime + defaultIntervalMs;
                         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                                 .putBoolean(KEY_IS_CAL_PENDING, false)
                                 .putBoolean(KEY_IS_CAL_REQUIRED, false)
                                 .putLong(KEY_CAL_TIME, calSuccessTime)
+                                .putLong(KEY_CAL_EXPIRATION_TIME, defaultExpTime)
+                                .putInt(KEY_ACCEPTED_CAL_COUNT, acceptedCount)
                                 .apply();
                         calStatusDesc = String.format(Locale.US, "✓ Calibration (%d mg/dL, %.1f mmol/L) ACCEPTED! Processing takes 5-15 min...",
                                 acceptedBg, acceptedBg / 18.0182f);
@@ -2107,6 +2188,16 @@ public class GuardianBleService extends Service {
     }
 
     public long getSensorStartTimeMs() {
+        if (sensorStartTimeMs <= 0) {
+            sensorStartTimeMs = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_SENSOR_START_TIME, 0);
+        }
+        if (sensorStartTimeMs <= 0) {
+            long fallback = GlucoseHistoryStorage.getInstance(this).getSensorSessionStartTime();
+            if (fallback > 0) {
+                sensorStartTimeMs = fallback;
+                getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putLong(KEY_SENSOR_START_TIME, fallback).apply();
+            }
+        }
         return sensorStartTimeMs;
     }
 

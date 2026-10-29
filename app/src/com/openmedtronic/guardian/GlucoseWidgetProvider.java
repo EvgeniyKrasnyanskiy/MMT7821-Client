@@ -165,10 +165,30 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(R.id.textWidgetCal, "🩸 --");
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#888888"));
             } else {
-                long calIntervalMs = 12 * 3600 * 1000L;
-                long elapsedCalMs = now - lastCalMs;
-                if (elapsedCalMs < calIntervalMs) {
-                    long remainMs = calIntervalMs - elapsedCalMs;
+                long sensorStart = (service != null && service.getSensorStartTimeMs() > 0)
+                        ? service.getSensorStartTimeMs()
+                        : prefs.getLong("sensor_start_time", 0);
+                int acceptedCount = prefs.getInt("accepted_cal_count", 0);
+                long sensorElapsedMs = (sensorStart > 0) ? (now - sensorStart) : Long.MAX_VALUE;
+                boolean isFirstDay = sensorElapsedMs < 14L * 3600_000L;
+                long calIntervalMs = (acceptedCount <= 1 || isFirstDay) ? (6L * 3600 * 1000L) : (12L * 3600 * 1000L);
+
+                long calExpMs = prefs.getLong("cal_expiration_time", 0);
+                if (isFirstDay && lastCalMs > 0 && calExpMs > lastCalMs + 7L * 3600_000L) {
+                    calExpMs = lastCalMs + 6L * 3600_000L;
+                }
+
+                long remainMs;
+                if (calExpMs > now) {
+                    remainMs = calExpMs - now;
+                } else if (lastCalMs > 0) {
+                    long elapsedCalMs = now - lastCalMs;
+                    remainMs = calIntervalMs - elapsedCalMs;
+                } else {
+                    remainMs = -1;
+                }
+
+                if (remainMs > 0) {
                     long remainHours = remainMs / (3600 * 1000L);
                     long remainMins = (remainMs % (3600 * 1000L)) / (60 * 1000L);
                     if (remainHours > 0) {
@@ -178,7 +198,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                     }
                     views.setTextColor(R.id.textWidgetCal, remainHours <= 2 ? Color.parseColor("#FFAB00") : Color.parseColor("#81C784"));
                 } else {
-                    views.setTextViewText(R.id.textWidgetCal, "🩸 12h+");
+                    views.setTextViewText(R.id.textWidgetCal, "🩸 Due");
                     views.setTextColor(R.id.textWidgetCal, Color.parseColor("#FFAB00"));
                 }
             }

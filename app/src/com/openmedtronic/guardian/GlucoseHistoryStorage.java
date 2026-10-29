@@ -330,6 +330,43 @@ public class GlucoseHistoryStorage {
         return new ArrayList<>(inMemoryPoints);
     }
 
+    public synchronized long getSensorSessionStartTime() {
+        if (inMemoryPoints.isEmpty()) {
+            return 0L;
+        }
+        long now = System.currentTimeMillis();
+        long maxSensorAgeMs = 7L * 24L * 3600_000L;
+        int sessionStartIndex = 0;
+
+        for (int i = inMemoryPoints.size() - 1; i > 0; i--) {
+            long prevTime = inMemoryPoints.get(i - 1).timestamp;
+            long currTime = inMemoryPoints.get(i).timestamp;
+            long gap = currTime - prevTime;
+            if (gap > 2L * 3600_000L) {
+                sessionStartIndex = i;
+                break;
+            }
+            if (now - prevTime > maxSensorAgeMs) {
+                sessionStartIndex = i;
+                break;
+            }
+        }
+        return inMemoryPoints.get(sessionStartIndex).timestamp;
+    }
+
+    public synchronized int getCalibrationCountSince(long sinceMs) {
+        if (sinceMs <= 0) {
+            sinceMs = getSensorSessionStartTime();
+        }
+        int count = 0;
+        for (GlucosePoint p : inMemoryPoints) {
+            if (p.isCalibration() && p.timestamp >= sinceMs) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public synchronized List<GlucoseChartView.Point> getChartPoints(int maxCount) {
         List<GlucoseChartView.Point> list = new ArrayList<>();
         int start = Math.max(0, inMemoryPoints.size() - maxCount);
