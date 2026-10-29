@@ -276,7 +276,7 @@
                 android:id="@+id/textLogs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#33FF33"
+                android:textColor="#B0BEC5"
                 android:fontFamily="monospace"
                 android:textSize="10sp"
                 android:text="Client ready..." />

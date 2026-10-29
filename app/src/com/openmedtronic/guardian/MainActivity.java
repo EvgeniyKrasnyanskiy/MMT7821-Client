@@ -30,6 +30,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
 import android.text.InputType;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -219,6 +223,27 @@ public class MainActivity extends Activity {
                     textSensorDetails.setTextColor(Color.parseColor("#888888"));
                 }
                 updateStaleState(false);
+            } else if (inWarmup) {
+                if (btnQuickCalibrate != null) {
+                    btnQuickCalibrate.setVisibility(View.GONE);
+                }
+                long elapsedWarmupMs = (warmupStart > 0) ? (System.currentTimeMillis() - warmupStart) : 0L;
+                long remainingWarmupMs = Math.max(0L, 7_200_000L - elapsedWarmupMs);
+                if (remainingWarmupMs > 0) {
+                    long remTotalSec = remainingWarmupMs / 1000L;
+                    long remHours = remTotalSec / 3600L;
+                    long remMins = (remTotalSec % 3600L) / 60L;
+                    long remSecs = remTotalSec % 60L;
+                    if (remHours > 0) {
+                        textCountdown.setText(String.format(Locale.US, "⏳ Warm-up: %02d:%02d:%02d", remHours, remMins, remSecs));
+                    } else {
+                        textCountdown.setText(String.format(Locale.US, "⏳ Warm-up: %02d:%02d", remMins, remSecs));
+                    }
+                } else {
+                    textCountdown.setText("⏳ Warm-up stabilizing...");
+                }
+                textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
+                updateStaleState(false);
             } else if (calPending) {
                 textCountdown.setText("⏳ Waiting for calibration acceptance...");
                 textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
@@ -231,36 +256,6 @@ public class MainActivity extends Activity {
                 textCountdown.setTextColor(Color.parseColor("#FFD54F"));
                 if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
                     btnQuickCalibrate.setVisibility(View.VISIBLE);
-                }
-                updateStaleState(false);
-            } else if (inWarmup && warmupStart > 0) {
-                long elapsedWarmupMs = System.currentTimeMillis() - warmupStart;
-                long remainingWarmupMs = Math.max(0L, 7_200_000L - elapsedWarmupMs);
-                if (remainingWarmupMs > 0) {
-                    long remTotalSec = remainingWarmupMs / 1000L;
-                    long remHours = remTotalSec / 3600L;
-                    long remMins = (remTotalSec % 3600L) / 60L;
-                    long remSecs = remTotalSec % 60L;
-                    if (remHours > 0) {
-                        textCountdown.setText(String.format(Locale.US, "Warm-up: %02d:%02d:%02d", remHours, remMins, remSecs));
-                    } else {
-                        textCountdown.setText(String.format(Locale.US, "Warm-up: %02d:%02d", remMins, remSecs));
-                    }
-                    textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
-                } else {
-                    if (calReq) {
-                        textCountdown.setText(lastCalTime > 0 ? "🩸 Calibration Needed" : "Waiting for 1st Calibration");
-                        textCountdown.setTextColor(Color.parseColor("#FFD54F"));
-                        if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
-                            btnQuickCalibrate.setVisibility(View.VISIBLE);
-                        }
-                    } else {
-                        textCountdown.setText("Warm-up complete, waiting for reading...");
-                        textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
-                        if (btnQuickCalibrate != null) {
-                            btnQuickCalibrate.setVisibility(View.GONE);
-                        }
-                    }
                 }
                 updateStaleState(false);
             } else if (lastMeasurementTimeMs > 0) {
@@ -571,13 +566,16 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     if (textLogs != null) {
-                        if (textLogs.getText().length() == 0) {
+                        if (textLogs.getText().length() == 0 || "Client ready...".contentEquals(textLogs.getText())) {
                             GuardianBleService service = GuardianBleService.getInstance();
                             if (service != null) {
-                                textLogs.setText(service.getLogHistory());
+                                setFormattedLogHistory(service.getLogHistory());
+                            } else {
+                                textLogs.setText(formatColoredLogLine(logMsg));
                             }
                         } else {
-                            textLogs.append("\n" + logMsg);
+                            textLogs.append("\n");
+                            textLogs.append(formatColoredLogLine(logMsg));
                         }
                         if (isLogsExpanded && scrollLogs != null) {
                             scrollLogs.post(new Runnable() {
@@ -623,6 +621,28 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @Override
+        public void onCalibrationStatusChanged(final boolean pending, final boolean required, final String statusMsg) {
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    isCalPending = pending;
+                    isCalRequired = required;
+                    if (pending) {
+                        displayCalibrationPending(statusMsg);
+                    } else if (required) {
+                        displayCalibrationRequired(lastRawIsig, statusMsg);
+                    } else {
+                        GuardianBleService s = GuardianBleService.getInstance();
+                        if (s != null && s.getLastGlucoseMmol() > 0.0f) {
+                            displayGlucose(s.getLastGlucoseMmol(), s.getLastGlucoseMgDl(), s.getLastRawVal(), s.getLastTrendRate(), s.getLastStatusDescription());
+                        }
+                    }
+                    updateCalCountdownDisplay();
+                }
+            });
+        }
     };
 
     @Override
@@ -651,7 +671,7 @@ public class MainActivity extends Activity {
         if (service != null) {
             service.setListener(bleServiceListener);
             if (textLogs != null) {
-                textLogs.setText(service.getLogHistory());
+                setFormattedLogHistory(service.getLogHistory());
                 if (isLogsExpanded && scrollLogs != null) {
                     scrollLogs.post(new Runnable() {
                         @Override
@@ -668,15 +688,15 @@ public class MainActivity extends Activity {
 
             if (!isConnected) {
                 displayDisconnected();
+            } else if (service.getLastGlucoseMmol() > 0.0f) {
+                displayGlucose(service.getLastGlucoseMmol(), service.getLastGlucoseMgDl(),
+                        service.getLastRawVal(), service.getLastTrendRate(), service.getLastStatusDescription());
             } else if (service.isInWarmup()) {
                 displayWarmup(service.getLastRawVal(), service.getLastStatusDescription());
             } else if (service.isCalPending()) {
                 displayCalibrationPending(service.getLastStatusDescription());
             } else if (service.isCalRequired()) {
                 displayCalibrationRequired(service.getLastRawVal(), service.getLastStatusDescription());
-            } else if (service.getLastGlucoseMmol() > 0.0f) {
-                displayGlucose(service.getLastGlucoseMmol(), service.getLastGlucoseMgDl(),
-                        service.getLastRawVal(), service.getLastTrendRate(), service.getLastStatusDescription());
             }
         }
     }
@@ -2496,9 +2516,20 @@ public class MainActivity extends Activity {
         String trendStr = Double.isNaN(trend) ? "--" : String.format(Locale.US, "%+.2f", trend);
         GuardianBleService s = GuardianBleService.getInstance();
 
-        boolean serviceInWarmup = (s != null && s.isInWarmup()) || isInWarmup;
-        boolean serviceCalPending = (s != null && s.isCalPending()) || isCalPending;
-        boolean serviceCalReq = (s != null && s.isCalRequired()) || isCalRequired;
+        if (mmol > 0.0f && rawVal >= 20 && rawVal <= 600) {
+            isInWarmup = false;
+            isCalPending = false;
+            isCalRequired = false;
+            getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(KEY_IS_IN_WARMUP, false)
+                    .putBoolean(KEY_IS_CAL_PENDING, false)
+                    .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                    .apply();
+        }
+
+        boolean serviceInWarmup = (s != null) ? s.isInWarmup() : isInWarmup;
+        boolean serviceCalPending = (s != null) ? s.isCalPending() : isCalPending;
+        boolean serviceCalReq = (s != null) ? s.isCalRequired() : isCalRequired;
 
         if (serviceInWarmup) {
             displayWarmup(rawVal, statusDesc);
@@ -2631,6 +2662,41 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    private SpannableString formatColoredLogLine(String line) {
+        if (line == null) return new SpannableString("");
+        SpannableString span = new SpannableString(line);
+        int color = Color.parseColor("#B0BEC5"); // Default neutral light gray
+        if (line.contains("ERROR") || line.contains("❌") || line.contains("mismatch") || line.contains("Failed") || line.contains("failed")) {
+            color = Color.parseColor("#FF5252"); // Red
+        } else if (line.contains("Warning:") || line.contains("⚠️") || line.contains("REJECTED") || line.contains("NOT_CALCULATED") || line.contains("lost!")) {
+            color = Color.parseColor("#FFD54F"); // Yellow
+        } else if (line.contains("SUCCESS:") || line.contains("✓") || line.contains("ACCEPTED") || line.contains("authentic") || line.contains("Session active")) {
+            color = Color.parseColor("#69F0AE"); // Bright Green
+        } else if (line.contains("STATUS:")) {
+            color = Color.parseColor("#4FC3F7"); // Cyan
+        } else if (line.contains("MEASUREMENT Packet:") || line.contains("Parsed:") || line.contains("Calibration entered:")) {
+            color = Color.parseColor("#FFFFFF"); // White
+        }
+        span.setSpan(new ForegroundColorSpan(color), 0, line.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return span;
+    }
+
+    private void setFormattedLogHistory(String history) {
+        if (textLogs == null) return;
+        if (history == null || history.isEmpty()) {
+            textLogs.setText("");
+            return;
+        }
+        String[] lines = history.split("\n");
+        int startIdx = Math.max(0, lines.length - 300);
+        SpannableStringBuilder ssb = new SpannableStringBuilder();
+        for (int i = startIdx; i < lines.length; i++) {
+            if (i > startIdx) ssb.append("\n");
+            ssb.append(formatColoredLogLine(lines[i]));
+        }
+        textLogs.setText(ssb);
     }
 
     @Override

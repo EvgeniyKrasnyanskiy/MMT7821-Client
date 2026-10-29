@@ -149,6 +149,7 @@ public class GuardianBleService extends Service {
         void onConnectionStateChanged(boolean connected);
         void onHandshakeStateChanged(HandshakeState state);
         void onSensorDaysUpdated(int daysRemaining);
+        void onCalibrationStatusChanged(boolean pending, boolean required, String statusMsg);
     }
 
     private static volatile GuardianBleService sInstance;
@@ -681,8 +682,10 @@ public class GuardianBleService extends Service {
         int bgMgDl = Math.round(bgMmol * 18.0182f);
         long now = System.currentTimeMillis();
         isCalPending = true;
+        isCalRequired = false;
         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                 .putBoolean(KEY_IS_CAL_PENDING, true)
+                .putBoolean(KEY_IS_CAL_REQUIRED, false)
                 .apply();
 
         // Single source of truth for calibration storage
@@ -697,6 +700,7 @@ public class GuardianBleService extends Service {
             sendCriticalOps(bluetoothGatt, calPacket);
         }
         updateStatus("⏳ Calibration sent, processing...");
+        notifyCalibrationStatus(true, false, "⏳ Calibration sent, processing...");
         updateNotification();
     }
 
@@ -1353,6 +1357,19 @@ public class GuardianBleService extends Service {
         } else if (uuid.equals(CHAR_SENSOR_CONNECTED_STATE)) {
             boolean connected = (value.length > 0 && value[0] != 0);
             log("SENSOR_CONNECTED_STATE: " + (connected ? "Connected (Enlite)" : "Disconnected"));
+            if (!connected) {
+                isInWarmup = false;
+                isCalPending = false;
+                isCalRequired = false;
+                warmupStartTimeMs = 0L;
+                getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                        .putBoolean(KEY_IS_IN_WARMUP, false)
+                        .putBoolean(KEY_IS_CAL_PENDING, false)
+                        .putBoolean(KEY_IS_CAL_REQUIRED, false)
+                        .putLong(KEY_WARMUP_START_TIME, 0L)
+                        .apply();
+                notifyCalibrationStatus(false, false, "Sensor disconnected");
+            }
         } else if (uuid.equals(CHAR_MEASUREMENT_READY)) {
             log("MEASUREMENT_READY received: " + GuardianCrypto.bytesToHex(value));
             handleMeasurementReady(gatt, value);
@@ -1593,28 +1610,30 @@ public class GuardianBleService extends Service {
                 boolean calPending = (statusBits & STATUS_BIT_CAL_PENDING) != 0;
                 boolean sensorError = (statusBits & STATUS_BIT_SENSOR_ERROR) != 0;
 
-                isCalRequired = calRequired;
-                if (calPending) {
-                    isCalPending = true;
-                } else if (calRequired) {
-                    isCalPending = false;
-                }
-
                 if (inWarmup) {
                     isInWarmup = true;
-                    if (warmupStartTimeMs <= 0 || (counter > 0 && Math.abs((System.currentTimeMillis() - warmupStartTimeMs) - counter * 300_000L) > 600_000L)) {
-                        warmupStartTimeMs = System.currentTimeMillis() - (counter * 300_000L);
+                    isCalRequired = false;
+                    if (warmupStartTimeMs <= 0) {
+                        warmupStartTimeMs = System.currentTimeMillis();
                     }
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                             .putBoolean(KEY_IS_IN_WARMUP, true)
-                            .putBoolean(KEY_IS_CAL_REQUIRED, isCalRequired)
+                            .putBoolean(KEY_IS_CAL_REQUIRED, false)
                             .putBoolean(KEY_IS_CAL_PENDING, isCalPending)
                             .putLong(KEY_WARMUP_START_TIME, warmupStartTimeMs)
                             .apply();
                 } else {
                     isInWarmup = false;
+                    warmupStartTimeMs = 0L;
+                    isCalRequired = calRequired;
+                    if (calPending) {
+                        isCalPending = true;
+                    } else if (calRequired) {
+                        isCalPending = false;
+                    }
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                             .putBoolean(KEY_IS_IN_WARMUP, false)
+                            .putLong(KEY_WARMUP_START_TIME, 0L)
                             .putBoolean(KEY_IS_CAL_REQUIRED, isCalRequired)
                             .putBoolean(KEY_IS_CAL_PENDING, isCalPending)
                             .apply();
@@ -1649,7 +1668,7 @@ public class GuardianBleService extends Service {
                 float glucoseMmol = 0.0f;
                 float glucoseMgDl = 0.0f;
 
-                if (!inWarmup && !calRequired && !isCalPending && rawVal34 >= 20 && rawVal34 <= 600) {
+                if (!inWarmup && !calRequired && rawVal34 >= 20 && rawVal34 <= 600) {
                     glucoseMgDl = (float) rawVal34;
                     glucoseMmol = glucoseMgDl / 18.0182f;
                     if (isCalPending) {
@@ -1658,6 +1677,7 @@ public class GuardianBleService extends Service {
                                 .putBoolean(KEY_IS_CAL_PENDING, false)
                                 .putLong(KEY_CAL_TIME, System.currentTimeMillis())
                                 .apply();
+                        notifyCalibrationStatus(false, false, "Calibration completed");
                     }
                 } else if (rawVal34 == 65535) {
                     log("Transmitter processing calibration / stabilizing signal (rawVal=65535)...");
@@ -1789,19 +1809,21 @@ public class GuardianBleService extends Service {
                         break;
                     case 3:
                         isCalPending = false;
-                        isCalRequired = true;
+                        isCalRequired = !isInWarmup;
                         getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                                 .putBoolean(KEY_IS_CAL_PENDING, false)
-                                .putBoolean(KEY_IS_CAL_REQUIRED, true)
+                                .putBoolean(KEY_IS_CAL_REQUIRED, isCalRequired)
                                 .apply();
-                        calStatusDesc = "⏳ Calibration was not calculated (NOT_CALCULATED)";
+                        calStatusDesc = isInWarmup
+                                ? "⏳ Sensor still warming up (CALIBRATION_NOT_CALCULATED)"
+                                : "⏳ Calibration was not calculated (NOT_CALCULATED)";
                         break;
                     default:
                         calStatusDesc = String.format(Locale.US, "Calibration Status: 0x%02X (BG=%d)", statusCode, acceptedBg);
                         break;
                 }
-                log(">>> " + calStatusDesc);
                 updateStatus(calStatusDesc);
+                notifyCalibrationStatus(isCalPending, isCalRequired, calStatusDesc);
                 updateNotification();
             }
         } catch (Exception e) {
@@ -1922,6 +1944,17 @@ public class GuardianBleService extends Service {
             public void run() {
                 if (listener != null) {
                     listener.onStatusUpdated(text);
+                }
+            }
+        });
+    }
+
+    private void notifyCalibrationStatus(final boolean pending, final boolean required, final String statusMsg) {
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (listener != null) {
+                    listener.onCalibrationStatusChanged(pending, required, statusMsg);
                 }
             }
         });
