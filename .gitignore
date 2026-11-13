@@ -14,7 +14,6 @@ output/
 __pycache__/
 app/build/
 *.apk
-!MMT7821-Client.apk
 *.idsig
 /*.png
 /*.jpg

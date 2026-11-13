@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.openmedtronic.guardian">
+    package="com.openmedtronic.guardian"
+    android:versionCode="11700"
+    android:versionName="1.17.0">
 
     <uses-sdk
         android:minSdkVersion="26"

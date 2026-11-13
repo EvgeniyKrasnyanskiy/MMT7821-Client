@@ -27,9 +27,14 @@ if not JAVA_HOME:
 
 JAVAC = os.path.join(JAVA_HOME, "bin", "javac.exe") if (JAVA_HOME and os.path.exists(os.path.join(JAVA_HOME, "bin", "javac.exe"))) else "javac"
 DEBUG_KEYSTORE = os.environ.get("DEBUG_KEYSTORE") or os.path.expanduser("~/.android/debug.keystore")
+RELEASE_KEYSTORE = os.environ.get("RELEASE_KEYSTORE")
+RELEASE_KEY_ALIAS = os.environ.get("RELEASE_KEY_ALIAS")
+RELEASE_STORE_PASS = os.environ.get("RELEASE_STORE_PASS")
+RELEASE_KEY_PASS = os.environ.get("RELEASE_KEY_PASS") or RELEASE_STORE_PASS
 
 AAPT2 = os.path.join(BUILD_TOOLS, "aapt2.exe")
 D8 = os.path.join(BUILD_TOOLS, "d8.bat")
+ZIPALIGN = os.path.join(BUILD_TOOLS, "zipalign.exe")
 APKSIGNER = os.path.join(BUILD_TOOLS, "apksigner.bat")
 
 APP_DIR = os.path.abspath("app")
@@ -91,8 +96,25 @@ def build():
         dex_path = os.path.join(DEX_DIR, "classes.dex")
         z.write(dex_path, "classes.dex")
 
-    # 6. Sign APK with apksigner
-    run(f'"{APKSIGNER}" sign --ks "{DEBUG_KEYSTORE}" --ks-pass pass:android --ks-key-alias androiddebugkey --out "{OUTPUT_APK}" "{unsigned_apk}"', "Signing APK")
+    # 6. Align APK with zipalign
+    aligned_apk = os.path.join(BUILD_DIR, "app_aligned.apk")
+    run(f'"{ZIPALIGN}" -f -p 4 "{unsigned_apk}" "{aligned_apk}"', "Aligning APK")
+
+    # 7. Sign APK with apksigner (release keystore via env vars, or fallback to debug)
+    if RELEASE_KEYSTORE and os.path.exists(RELEASE_KEYSTORE) and RELEASE_KEY_ALIAS and RELEASE_STORE_PASS:
+        run(
+            f'"{APKSIGNER}" sign --ks "{RELEASE_KEYSTORE}" --ks-pass "pass:{RELEASE_STORE_PASS}" '
+            f'--ks-key-alias "{RELEASE_KEY_ALIAS}" --key-pass "pass:{RELEASE_KEY_PASS}" '
+            f'--out "{OUTPUT_APK}" "{aligned_apk}"',
+            f"Signing release APK ({RELEASE_KEY_ALIAS})"
+        )
+    else:
+        print("[!] WARNING: RELEASE_KEYSTORE / RELEASE_KEY_ALIAS / RELEASE_STORE_PASS not set. Falling back to debug.keystore!")
+        run(
+            f'"{APKSIGNER}" sign --ks "{DEBUG_KEYSTORE}" --ks-pass pass:android --ks-key-alias androiddebugkey '
+            f'--out "{OUTPUT_APK}" "{aligned_apk}"',
+            "Signing debug APK"
+        )
     print(f"[+] Successfully built and signed {OUTPUT_APK}")
 
 if __name__ == "__main__":
