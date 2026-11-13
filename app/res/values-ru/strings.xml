@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MMT7821 Client</string>
+    <string name="widget_name">MMT7821 Client CGM</string>
+    <string name="widget_desc">Мониторинг глюкозы в реальном времени со стрелкой тренда, калибровкой и зарядом трансмиттера</string>
+
+    <!-- First Launch Disclaimer -->
+    <string name="disclaimer_title">Медицинский отказ от ответственности</string>
+    <string name="disclaimer_message">ТОЛЬКО ДЛЯ ИССЛЕДОВАТЕЛЬСКИХ И ОБРАЗОВАТЕЛЬНЫХ (DIY) ЦЕЛЕЙ.\n\nMMT7821-Client НЕ является сертифицированным медицинским изделием и не прошёл оценку FDA, EMA или иных регуляторов.\n\nВозможны сбои ПО или Bluetooth. НИКОГДА не принимайте решения о дозировании инсулина или лечении только на основании данных этого приложения — всегда проверяйте показания сертифицированным глюкометром.\n\nПродолжая использование, вы принимаете на себя всю ответственность и все связанные риски.</string>
+    <string name="disclaimer_accept">Понимаю и принимаю</string>
+    <string name="disclaimer_exit">Выход</string>
+
+    <!-- Permissions & Battery Optimization -->
+    <string name="err_ble_permission_required">Для подключения к трансмиттеру необходимо разрешение Bluetooth</string>
+    <string name="battery_opt_title">Работа в фоне</string>
+    <string name="battery_opt_message">Для стабильного круглосуточного получения показаний и тревог разрешите приложению работу без ограничений энергосбережения.</string>
+    <string name="battery_opt_allow">Разрешить</string>
+    <string name="battery_opt_later">Позже</string>
+</resources>

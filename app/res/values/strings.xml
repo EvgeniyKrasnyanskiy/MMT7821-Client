@@ -3,4 +3,17 @@
     <string name="app_name">MMT7821 Client</string>
     <string name="widget_name">MMT7821 Client CGM</string>
     <string name="widget_desc">Real-time glucose monitor with trend, calibration info, and transmitter battery</string>
+
+    <!-- First Launch Disclaimer -->
+    <string name="disclaimer_title">Medical &amp; Legal Disclaimer</string>
+    <string name="disclaimer_message">FOR RESEARCH AND EDUCATIONAL (DIY) PURPOSES ONLY.\n\nMMT7821-Client is NOT an approved medical device and has not been evaluated by the FDA, EMA, or any regulatory authority.\n\nSoftware or Bluetooth failures may occur. NEVER make insulin dosing or treatment decisions based solely on this app — always confirm with a certified blood glucose meter.\n\nBy continuing, you assume full responsibility and all associated risks.</string>
+    <string name="disclaimer_accept">I Understand &amp; Accept</string>
+    <string name="disclaimer_exit">Exit</string>
+
+    <!-- Permissions & Battery Optimization -->
+    <string name="err_ble_permission_required">Bluetooth permission is required to connect to the transmitter</string>
+    <string name="battery_opt_title">Background Monitoring</string>
+    <string name="battery_opt_message">For reliable 24/7 CGM readings and alarms, allow MMT7821 Client to run without battery optimization restrictions.</string>
+    <string name="battery_opt_allow">Allow</string>
+    <string name="battery_opt_later">Later</string>
 </resources>

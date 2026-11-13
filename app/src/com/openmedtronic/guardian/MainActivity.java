@@ -29,6 +29,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.text.InputType;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -95,6 +97,8 @@ public class MainActivity extends Activity {
     private static final String KEY_CAL_EXPIRATION_TIME = "cal_expiration_time";
     private static final String KEY_ACCEPTED_CAL_COUNT = "accepted_cal_count";
     private static final String KEY_USER_DISCONNECTED = "user_disconnected";
+    private static final String KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted";
+    private static final String KEY_BATTERY_PROMPT_SHOWN = "battery_prompt_shown";
 
     private static final int REQ_PERMISSIONS = 101;
     private static final int REQ_EXPORT_CSV = 2001;
@@ -515,8 +519,13 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (checkPermissions()) {
-            startBleService();
+        if (getSharedPreferences(PREF_NAME, MODE_PRIVATE).getBoolean(KEY_DISCLAIMER_ACCEPTED, false)) {
+            if (checkPermissions()) {
+                startBleService();
+                requestBatteryOptimizationExemptionIfNeeded();
+            }
+        } else {
+            showFirstLaunchDisclaimer();
         }
     }
 
@@ -524,7 +533,12 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_PERMISSIONS) {
-            startBleService();
+            if (hasRequiredBlePermissions()) {
+                startBleService();
+                requestBatteryOptimizationExemptionIfNeeded();
+            } else {
+                Toast.makeText(this, getString(R.string.err_ble_permission_required), Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -2353,6 +2367,74 @@ public class MainActivity extends Activity {
                 lastMeasurementTimeMs = lastPt.timestamp;
             }
         }
+    }
+
+    private boolean hasRequiredBlePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                    && checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private void showFirstLaunchDisclaimer() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.disclaimer_title)
+                .setMessage(R.string.disclaimer_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.disclaimer_accept, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putBoolean(KEY_DISCLAIMER_ACCEPTED, true)
+                                .apply();
+                        if (checkPermissions()) {
+                            startBleService();
+                            requestBatteryOptimizationExemptionIfNeeded();
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.disclaimer_exit, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                })
+                .show();
+    }
+
+    private void requestBatteryOptimizationExemptionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        if (sp.getBoolean(KEY_BATTERY_PROMPT_SHOWN, false)) return;
+
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName())) {
+            return;
+        }
+
+        sp.edit().putBoolean(KEY_BATTERY_PROMPT_SHOWN, true).apply();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.battery_opt_title)
+                .setMessage(R.string.battery_opt_message)
+                .setPositiveButton(R.string.battery_opt_allow, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                            intent.setData(Uri.parse("package:" + getPackageName()));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            try {
+                                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.battery_opt_later, null)
+                .show();
     }
 
     private boolean checkPermissions() {
