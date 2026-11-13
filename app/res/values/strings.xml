@@ -16,4 +16,49 @@
     <string name="battery_opt_message">For reliable 24/7 CGM readings and alarms, allow MMT7821 Client to run without battery optimization restrictions.</string>
     <string name="battery_opt_allow">Allow</string>
     <string name="battery_opt_later">Later</string>
+
+    <!-- Main Screen & Controls -->
+    <string name="status_disconnected">Disconnected</string>
+    <string name="sensor_details_waiting">SG: -- | Trend: -- | Status: Waiting...</string>
+    <string name="btn_enter_calibration">🩸 Enter Calibration (BG)</string>
+    <string name="btn_log_therapy_bg">+ 💉/🍞/🩸 Log Therapy &amp; BG</string>
+    <string name="logs_header">📋 BLE Protocol Logs</string>
+    <string name="transmitter_disconnected">Transmitter disconnected</string>
+    <string name="transmitter_disconnected_title">Transmitter Disconnected</string>
+    <string name="warmup_in_progress">Enlite Sensor Warm-up...</string>
+    <string name="warmup_status">Sensor Warm-up</string>
+    <string name="cal_needed">Calibration Needed</string>
+    <string name="cal_waiting_first">Waiting for 1st Calibration</string>
+    <string name="cal_processing">Processing Calibration...</string>
+    <string name="cal_processing_desc">Processing Calibration (5–15 min)...</string>
+    <string name="cal_waiting_accept">⏳ Waiting for calibration acceptance...</string>
+
+    <!-- Widget -->
+    <string name="widget_disconnected">⚠️ Disconnected (%s)</string>
+    <string name="widget_warmup">Warm-up: %1$02d:%2$02d</string>
+    <string name="widget_cal_pending">Processing cal...</string>
+    <string name="widget_cal_required">Calibrate sensor</string>
+    <string name="widget_no_signal">⚠️ No Signal (%s)</string>
+    <string name="widget_waiting">Waiting for sensor...</string>
+    <string name="widget_offline">⚠️ Offline</string>
+    <string name="widget_badge_warmup">⏳ Warm-up</string>
+    <string name="widget_badge_in_progress">⏳ In progress</string>
+    <string name="widget_badge_cal_now">🩸 Cal now</string>
+
+    <!-- Alarms -->
+    <string name="alarm_low_title_mgdl">🚨 URGENT LOW: %d mg/dL</string>
+    <string name="alarm_low_text_mgdl">Glucose is below 70 mg/dL (%.1f mmol/L). Treat immediately with fast carbs!</string>
+    <string name="alarm_low_title_mmol">🚨 URGENT LOW: %.1f mmol/L</string>
+    <string name="alarm_low_text_mmol">Glucose is below 3.9 mmol/L (%d mg/dL). Treat immediately with fast carbs!</string>
+    <string name="alarm_high_title_mgdl">⚠️ HIGH GLUCOSE: %d mg/dL</string>
+    <string name="alarm_high_text_mgdl">Glucose is above 180 mg/dL (%.1f mmol/L). Check ketones and insulin.</string>
+    <string name="alarm_high_title_mmol">⚠️ HIGH GLUCOSE: %.1f mmol/L</string>
+    <string name="alarm_high_text_mmol">Glucose is above 10.0 mmol/L (%d mg/dL). Check ketones and insulin.</string>
+    <string name="alarm_cal_title">🩸 Sensor Calibration Required</string>
+    <string name="alarm_cal_text">Transmitter requires fingerstick BG calibration from meter to continue monitoring.</string>
+    <string name="alarm_snooze_30m">🔕 Snooze 30m</string>
+
+    <!-- Guide & Disclaimer Dialog -->
+    <string name="guide_title">ℹ️ Guide &amp; Disclaimer</string>
+    <string name="guide_close">Close</string>
 </resources>

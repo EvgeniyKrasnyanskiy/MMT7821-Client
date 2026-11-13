@@ -88,7 +88,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Disconnected"
+                android:text="@string/status_disconnected"
                 android:textColor="#AAAAAA"
                 android:textSize="12sp" />
 
@@ -172,7 +172,7 @@
             android:id="@+id/textSensorDetails"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SG: -- | Trend: -- | Status: Waiting..."
+            android:text="@string/sensor_details_waiting"
             android:textColor="#AAAAAA"
             android:textSize="12sp" />
 
@@ -181,7 +181,7 @@
             android:id="@+id/btnQuickCalibrate"
             android:layout_width="match_parent"
             android:layout_height="38dp"
-            android:text="🩸 Enter Calibration (BG)"
+            android:text="@string/btn_enter_calibration"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
@@ -217,7 +217,7 @@
             android:id="@+id/btnQuickTherapy"
             android:layout_width="match_parent"
             android:layout_height="40dp"
-            android:text="+ 💉/🍞/🩸 Log Therapy &amp; BG"
+            android:text="@string/btn_log_therapy_bg"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
@@ -251,7 +251,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="📋 BLE Protocol Logs"
+                android:text="@string/logs_header"
                 android:textColor="#888888"
                 android:textSize="11sp" />
 

@@ -80,7 +80,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#888888"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
                 String lastTime = (lastMeasureMs > 0) ? timeFmt.format(new Date(lastMeasureMs)) : "--:--";
-                views.setTextViewText(R.id.textWidgetSub, "⚠️ Disconnected (" + lastTime + ")");
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_disconnected, lastTime));
             } else if (inWarmup) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));
@@ -91,21 +91,21 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 long totalSec = Math.max(0, warmupRemainMs / 1000);
                 long hours = totalSec / 3600;
                 long mins = (totalSec % 3600) / 60;
-                views.setTextViewText(R.id.textWidgetSub, String.format(Locale.US, "Warm-up: %02d:%02d", hours, mins));
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_warmup, hours, mins));
             } else if (calPending) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));
                 views.setTextViewText(R.id.textWidgetTrend, "⏳");
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#4FC3F7"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
-                views.setTextViewText(R.id.textWidgetSub, "Processing cal...");
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_cal_pending));
             } else if (calRequired) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#FFD54F"));
                 views.setTextViewText(R.id.textWidgetTrend, "");
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#FFD54F"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
-                views.setTextViewText(R.id.textWidgetSub, "Calibrate sensor");
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_cal_required));
             } else if (isStale) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#888888"));
@@ -113,7 +113,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#888888"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
                 String timeStr = (lastMeasureMs > 0) ? timeFmt.format(new Date(lastMeasureMs)) : "--:--";
-                views.setTextViewText(R.id.textWidgetSub, "⚠️ No Signal (" + timeStr + ")");
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_no_signal, timeStr));
             } else if (glucoseMmol > 0) {
                 if (useMgDl) {
                     views.setTextViewText(R.id.textWidgetGlucose, String.format(Locale.US, "%d", Math.round(glucoseMgDl)));
@@ -145,21 +145,21 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(R.id.textWidgetTrend, "");
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#888888"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
-                views.setTextViewText(R.id.textWidgetSub, "Waiting for sensor...");
+                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_waiting));
             }
 
             // 2. Calibration Info Badge
             if (!isConnected) {
-                views.setTextViewText(R.id.textWidgetCal, "⚠️ Offline");
+                views.setTextViewText(R.id.textWidgetCal, context.getString(R.string.widget_offline));
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#888888"));
             } else if (inWarmup) {
-                views.setTextViewText(R.id.textWidgetCal, "⏳ Warm-up");
+                views.setTextViewText(R.id.textWidgetCal, context.getString(R.string.widget_badge_warmup));
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#4FC3F7"));
             } else if (calPending) {
-                views.setTextViewText(R.id.textWidgetCal, "⏳ In progress");
+                views.setTextViewText(R.id.textWidgetCal, context.getString(R.string.widget_badge_in_progress));
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#4FC3F7"));
             } else if (calRequired) {
-                views.setTextViewText(R.id.textWidgetCal, "🩸 Cal now");
+                views.setTextViewText(R.id.textWidgetCal, context.getString(R.string.widget_badge_cal_now));
                 views.setTextColor(R.id.textWidgetCal, Color.parseColor("#FF5252"));
             } else if (lastCalMs <= 0) {
                 views.setTextViewText(R.id.textWidgetCal, "🩸 --");

@@ -1456,7 +1456,7 @@ public class MainActivity extends Activity {
 
     private void showGuideAndDisclaimerDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("ℹ️ Guide & Disclaimer");
+        builder.setTitle(R.string.guide_title);
 
         ScrollView scrollView = new ScrollView(this);
         int pad = dpToPx(18);
@@ -1487,7 +1487,7 @@ public class MainActivity extends Activity {
         scrollView.addView(textContent);
 
         builder.setView(scrollView);
-        builder.setPositiveButton("Close", null);
+        builder.setPositiveButton(R.string.guide_close, null);
         builder.show();
     }
 
@@ -2519,21 +2519,21 @@ public class MainActivity extends Activity {
             textTrendArrow.setVisibility(View.GONE);
         }
         if (textGlucoseMgDl != null) {
-            textGlucoseMgDl.setText("Disconnected");
+            textGlucoseMgDl.setText(R.string.status_disconnected);
             textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
         }
         if (textSensorDetails != null) {
-            textSensorDetails.setText("Transmitter disconnected");
+            textSensorDetails.setText(R.string.transmitter_disconnected);
             textSensorDetails.setTextColor(Color.parseColor("#888888"));
         }
         if (textCountdown != null) {
-            textCountdown.setText("Transmitter Disconnected");
+            textCountdown.setText(R.string.transmitter_disconnected_title);
             textCountdown.setTextColor(Color.parseColor("#888888"));
         }
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);
         }
-        updateStatus("Disconnected");
+        updateStatus(getString(R.string.status_disconnected));
         updateBatteryDisplay(-1);
         updateSensorDaysDisplay();
         updateCalCountdownDisplay();
@@ -2558,9 +2558,9 @@ public class MainActivity extends Activity {
         if (textTrendArrow != null) {
             textTrendArrow.setVisibility(View.GONE);
         }
-        textGlucoseMgDl.setText("Enlite Sensor Warm-up...");
+        textGlucoseMgDl.setText(R.string.warmup_in_progress);
         textGlucoseMgDl.setTextColor(Color.parseColor("#B0BEC5"));
-        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Sensor Warm-up";
+        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : getString(R.string.warmup_status);
         textSensorDetails.setText(desc);
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);
@@ -2582,7 +2582,7 @@ public class MainActivity extends Activity {
                 .apply();
 
         long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
-        String calTitle = (lastCalTime > 0) ? "Calibration Needed" : "Waiting for 1st Calibration";
+        String calTitle = (lastCalTime > 0) ? getString(R.string.cal_needed) : getString(R.string.cal_waiting_first);
 
         textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
         textGlucoseMmolValue.setText("--");
@@ -2624,11 +2624,11 @@ public class MainActivity extends Activity {
             textTrendArrow.setText("⏳");
             textTrendArrow.setTextColor(Color.parseColor("#4FC3F7"));
         }
-        textGlucoseMgDl.setText("Processing Calibration...");
+        textGlucoseMgDl.setText(R.string.cal_processing);
         textGlucoseMgDl.setTextColor(Color.parseColor("#4FC3F7"));
-        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Processing Calibration (5–15 min)...";
+        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : getString(R.string.cal_processing_desc);
         textSensorDetails.setText(desc);
-        textCountdown.setText("⏳ Waiting for calibration acceptance...");
+        textCountdown.setText(R.string.cal_waiting_accept);
         textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);

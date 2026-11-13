@@ -2262,26 +2262,26 @@ public class GuardianBleService extends Service {
             alarmType = 1;
             boolean useMgDl = sp.getBoolean(KEY_USE_MGDL, false);
             if (useMgDl) {
-                alarmTitle = String.format(Locale.US, "🚨 URGENT LOW: %d mg/dL", Math.round(mmol * 18.0182f));
-                alarmText = String.format(Locale.US, "Glucose is below 70 mg/dL (%.1f mmol/L). Treat immediately with fast carbs!", mmol);
+                alarmTitle = getString(R.string.alarm_low_title_mgdl, Math.round(mmol * 18.0182f));
+                alarmText = getString(R.string.alarm_low_text_mgdl, mmol);
             } else {
-                alarmTitle = String.format(Locale.US, "🚨 URGENT LOW: %.1f mmol/L", mmol);
-                alarmText = String.format(Locale.US, "Glucose is below 3.9 mmol/L (%d mg/dL). Treat immediately with fast carbs!", Math.round(mmol * 18.0182f));
+                alarmTitle = getString(R.string.alarm_low_title_mmol, mmol);
+                alarmText = getString(R.string.alarm_low_text_mmol, Math.round(mmol * 18.0182f));
             }
         } else if (mmol > 10.0f) {
             alarmType = 2;
             boolean useMgDl = sp.getBoolean(KEY_USE_MGDL, false);
             if (useMgDl) {
-                alarmTitle = String.format(Locale.US, "⚠️ HIGH GLUCOSE: %d mg/dL", Math.round(mmol * 18.0182f));
-                alarmText = String.format(Locale.US, "Glucose is above 180 mg/dL (%.1f mmol/L). Check ketones and insulin.", mmol);
+                alarmTitle = getString(R.string.alarm_high_title_mgdl, Math.round(mmol * 18.0182f));
+                alarmText = getString(R.string.alarm_high_text_mgdl, mmol);
             } else {
-                alarmTitle = String.format(Locale.US, "⚠️ HIGH GLUCOSE: %.1f mmol/L", mmol);
-                alarmText = String.format(Locale.US, "Glucose is above 10.0 mmol/L (%d mg/dL). Check ketones and insulin.", Math.round(mmol * 18.0182f));
+                alarmTitle = getString(R.string.alarm_high_title_mmol, mmol);
+                alarmText = getString(R.string.alarm_high_text_mmol, Math.round(mmol * 18.0182f));
             }
         } else if (calRequired && !isCalPending && sp.getBoolean(KEY_ALARM_CAL_ENABLED, true)) {
             alarmType = 3;
-            alarmTitle = "🩸 Sensor Calibration Required";
-            alarmText = "Transmitter requires fingerstick BG calibration from meter to continue monitoring.";
+            alarmTitle = getString(R.string.alarm_cal_title);
+            alarmText = getString(R.string.alarm_cal_text);
         }
 
         if (alarmType == 0) {
@@ -2408,7 +2408,7 @@ public class GuardianBleService extends Service {
                 .setAutoCancel(true)
                 .setOngoing(false);
 
-        builder.addAction(0, "🔕 Snooze 30m", snoozePi);
+        builder.addAction(0, getString(R.string.alarm_snooze_30m), snoozePi);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             builder.setVisibility(Notification.VISIBILITY_PUBLIC)
