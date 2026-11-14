@@ -216,6 +216,7 @@ public class MainActivity extends Activity {
             long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
 
             boolean isConnected = (service != null && service.isDeviceConnected());
+            updateQuickTherapyButton(isConnected);
 
             if (!isConnected) {
                 textCountdown.setText(R.string.transmitter_disconnected_title);
@@ -489,7 +490,8 @@ public class MainActivity extends Activity {
         }
 
         if (btnQuickTherapy != null) {
-            styleSettingsButton(btnQuickTherapy, Color.parseColor("#1E2A38"), false);
+            GuardianBleService initService = GuardianBleService.getInstance();
+            updateQuickTherapyButton(initService != null && initService.isDeviceConnected(), true);
             btnQuickTherapy.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1598,6 +1600,24 @@ public class MainActivity extends Activity {
         btn.setTextSize(12.5f);
     }
 
+    private void updateQuickTherapyButton(boolean isConnected) {
+        updateQuickTherapyButton(isConnected, false);
+    }
+
+    private void updateQuickTherapyButton(boolean isConnected, boolean force) {
+        if (btnQuickTherapy == null) return;
+        if (!force && btnQuickTherapy.isEnabled() == isConnected) return;
+        btnQuickTherapy.setEnabled(isConnected);
+        if (isConnected) {
+            styleSettingsButton(btnQuickTherapy, Color.parseColor("#1E2A38"), false);
+            btnQuickTherapy.setTextColor(Color.WHITE);
+        } else {
+            styleSettingsButton(btnQuickTherapy, Color.parseColor("#1A1A1A"), false);
+            btnQuickTherapy.setTextColor(Color.parseColor("#666666"));
+        }
+        btnQuickTherapy.setTextSize(14.5f);
+    }
+
     private int dpToPx(float dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
@@ -2631,6 +2651,7 @@ public class MainActivity extends Activity {
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);
         }
+        updateQuickTherapyButton(false);
         updateStatus(getString(R.string.status_disconnected));
         updateBatteryDisplay(-1);
         updateSensorDaysDisplay();
