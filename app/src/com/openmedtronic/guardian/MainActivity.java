@@ -1195,10 +1195,19 @@ public class MainActivity extends Activity {
         });
         rowUnitSnooze.addView(btnUnit);
 
-        Button btnSnooze = new Button(this);
-        btnSnooze.setText(R.string.settings_snooze_30m);
-        styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
-        btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
+        final Button btnSnooze = new Button(this);
+        long existingSnoozeUntil = sp.getLong(KEY_SNOOZE_UNTIL_MS, 0L);
+        long nowMs = System.currentTimeMillis();
+        if (existingSnoozeUntil > nowMs) {
+            long remMins = Math.max(1L, (existingSnoozeUntil - nowMs + 59_999L) / 60_000L);
+            btnSnooze.setText(getString(R.string.settings_snoozed_mins, remMins));
+            styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
+            btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
+        } else {
+            btnSnooze.setText(R.string.settings_snooze_30m);
+            styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
+            btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
+        }
         LinearLayout.LayoutParams snoozeLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
         snoozeLp.leftMargin = dpToPx(4);
         btnSnooze.setLayoutParams(snoozeLp);
@@ -1212,17 +1221,24 @@ public class MainActivity extends Activity {
                     long snoozeUntil = System.currentTimeMillis() + 30 * 60_000L;
                     sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
                 }
+                btnSnooze.setText(getString(R.string.settings_snoozed_mins, 30L));
+                styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
+                btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
                 Toast.makeText(MainActivity.this, R.string.settings_snooze_toast, Toast.LENGTH_SHORT).show();
             }
         });
         rowUnitSnooze.addView(btnSnooze);
         layout.addView(rowUnitSnooze);
 
+        GlucoseHistoryStorage historyStorage = GlucoseHistoryStorage.getInstance(this);
+        boolean hasHistory = !historyStorage.getChartPoints(4032).isEmpty() || !historyStorage.getTherapyHistory().isEmpty();
+
         // Row 3: [💾 Export SiDiary CSV]
-        Button btnExportCsv = new Button(this);
+        final Button btnExportCsv = new Button(this);
         btnExportCsv.setText(R.string.settings_export_csv);
-        styleSettingsButton(btnExportCsv, Color.parseColor("#2A2A2A"), false);
-        btnExportCsv.setTextColor(Color.WHITE);
+        styleSettingsButton(btnExportCsv, Color.parseColor(hasHistory ? "#2A2A2A" : "#222222"), false);
+        btnExportCsv.setTextColor(hasHistory ? Color.WHITE : Color.parseColor("#777777"));
+        btnExportCsv.setEnabled(hasHistory);
         LinearLayout.LayoutParams exportCsvLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         exportCsvLp.topMargin = dpToPx(8);
@@ -1257,10 +1273,11 @@ public class MainActivity extends Activity {
         btnGuide.setLayoutParams(guideLp);
         rowGuideClear.addView(btnGuide);
 
-        Button btnClearChart = new Button(this);
+        final Button btnClearChart = new Button(this);
         btnClearChart.setText(R.string.settings_clear_history);
-        styleSettingsButton(btnClearChart, Color.parseColor("#2A2A2A"), true);
-        btnClearChart.setTextColor(Color.WHITE);
+        styleSettingsButton(btnClearChart, Color.parseColor(hasHistory ? "#2A2A2A" : "#222222"), hasHistory);
+        btnClearChart.setTextColor(hasHistory ? Color.WHITE : Color.parseColor("#777777"));
+        btnClearChart.setEnabled(hasHistory);
         LinearLayout.LayoutParams clearChartLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
         clearChartLp.leftMargin = dpToPx(4);
         btnClearChart.setLayoutParams(clearChartLp);

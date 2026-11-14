@@ -100,6 +100,7 @@
     <string name="settings_unit_mgdl">📏 Единицы: mg/dL</string>
     <string name="settings_unit_mmol">📏 Единицы: mmol/L</string>
     <string name="settings_snooze_30m">🔕 Отложить 30м</string>
+    <string name="settings_snoozed_mins">🔕 Отложено (%dм)</string>
     <string name="settings_snooze_toast">Тревоги отложены на 30 минут</string>
     <string name="settings_export_csv">💾 Экспорт SiDiary CSV</string>
     <string name="settings_guide_info">ℹ️ Справка и инфо</string>
