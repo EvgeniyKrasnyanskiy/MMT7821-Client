@@ -1224,16 +1224,29 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 GuardianBleService service = GuardianBleService.getInstance();
-                if (service != null) {
-                    service.snoozeAlarms(30);
+                long curSnoozeUntil = sp.getLong(KEY_SNOOZE_UNTIL_MS, 0L);
+                if (curSnoozeUntil > System.currentTimeMillis()) {
+                    if (service != null) {
+                        service.cancelSnooze();
+                    } else {
+                        sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, 0L).apply();
+                    }
+                    btnSnooze.setText(R.string.settings_snooze_30m);
+                    styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
+                    btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
+                    Toast.makeText(MainActivity.this, R.string.settings_snooze_resumed_toast, Toast.LENGTH_SHORT).show();
                 } else {
-                    long snoozeUntil = System.currentTimeMillis() + 30 * 60_000L;
-                    sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
+                    if (service != null) {
+                        service.snoozeAlarms(30);
+                    } else {
+                        long snoozeUntil = System.currentTimeMillis() + 30 * 60_000L;
+                        sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
+                    }
+                    btnSnooze.setText(getString(R.string.settings_snoozed_mins, 30L));
+                    styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
+                    btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
+                    Toast.makeText(MainActivity.this, R.string.settings_snooze_toast, Toast.LENGTH_SHORT).show();
                 }
-                btnSnooze.setText(getString(R.string.settings_snoozed_mins, 30L));
-                styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
-                btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
-                Toast.makeText(MainActivity.this, R.string.settings_snooze_toast, Toast.LENGTH_SHORT).show();
             }
         });
         rowUnitSnooze.addView(btnSnooze);

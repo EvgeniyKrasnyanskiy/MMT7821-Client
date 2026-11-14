@@ -2248,6 +2248,13 @@ public class GuardianBleService extends Service {
                 new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(snoozeUntil)) + ")");
     }
 
+    public void cancelSnooze() {
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                .putLong(KEY_SNOOZE_UNTIL_MS, 0L)
+                .apply();
+        log("Alarm snooze cancelled — alarms resumed.");
+    }
+
     private void checkAndTriggerAlarms(float mmol, boolean calRequired) {
         SharedPreferences sp = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         boolean alarmsEnabled = sp.getBoolean(KEY_ALARMS_ENABLED, true);

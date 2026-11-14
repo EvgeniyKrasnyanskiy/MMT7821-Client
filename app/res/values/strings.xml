@@ -102,6 +102,7 @@
     <string name="settings_snooze_30m">🔕 Snooze 30m</string>
     <string name="settings_snoozed_mins">🔕 Snoozed (%dm)</string>
     <string name="settings_snooze_toast">Alarms snoozed for 30 minutes</string>
+    <string name="settings_snooze_resumed_toast">Alarms resumed</string>
     <string name="settings_export_csv">💾 Export SiDiary CSV</string>
     <string name="settings_guide_info">ℹ️ Guide &amp; Info</string>
     <string name="settings_clear_history">🗑️ Clear History</string>
