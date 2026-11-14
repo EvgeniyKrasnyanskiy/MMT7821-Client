@@ -219,19 +219,19 @@ public class MainActivity extends Activity {
             updateQuickTherapyButton(isConnected);
 
             if (!isConnected) {
-                textCountdown.setText(R.string.transmitter_disconnected_title);
+                textCountdown.setText("--:--");
                 textCountdown.setTextColor(Color.parseColor("#888888"));
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
-                String disconnectedStr = getString(R.string.status_disconnected);
-                if (textGlucoseMgDl != null && !disconnectedStr.equals(textGlucoseMgDl.getText().toString())) {
-                    textGlucoseMgDl.setText(disconnectedStr);
+                String txDisconnectedStr = getString(R.string.transmitter_disconnected);
+                if (textGlucoseMgDl != null && !txDisconnectedStr.equals(textGlucoseMgDl.getText().toString())) {
+                    textGlucoseMgDl.setText(txDisconnectedStr);
                     textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
                 }
-                String txDisconnectedStr = getString(R.string.transmitter_disconnected);
-                if (textSensorDetails != null && !txDisconnectedStr.equals(textSensorDetails.getText().toString())) {
-                    textSensorDetails.setText(txDisconnectedStr);
+                String connectHintStr = getString(R.string.disconnected_connect_hint);
+                if (textSensorDetails != null && !connectHintStr.equals(textSensorDetails.getText().toString())) {
+                    textSensorDetails.setText(connectHintStr);
                     textSensorDetails.setTextColor(Color.parseColor("#888888"));
                 }
                 updateStaleState(false);
@@ -2657,15 +2657,15 @@ public class MainActivity extends Activity {
             textTrendArrow.setVisibility(View.GONE);
         }
         if (textGlucoseMgDl != null) {
-            textGlucoseMgDl.setText(R.string.status_disconnected);
+            textGlucoseMgDl.setText(R.string.transmitter_disconnected);
             textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
         }
         if (textSensorDetails != null) {
-            textSensorDetails.setText(R.string.transmitter_disconnected);
+            textSensorDetails.setText(R.string.disconnected_connect_hint);
             textSensorDetails.setTextColor(Color.parseColor("#888888"));
         }
         if (textCountdown != null) {
-            textCountdown.setText(R.string.transmitter_disconnected_title);
+            textCountdown.setText("--:--");
             textCountdown.setTextColor(Color.parseColor("#888888"));
         }
         if (btnQuickCalibrate != null) {
