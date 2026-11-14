@@ -410,6 +410,13 @@ public class MainActivity extends Activity {
             getActionBar().hide();
         }
         setContentView(R.layout.activity_main);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(Color.parseColor("#121212"));
+            getWindow().setNavigationBarColor(Color.parseColor("#121212"));
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
 
         btnSettings = findViewById(R.id.btnSettings);
         textTransmitterName = findViewById(R.id.textTransmitterName);

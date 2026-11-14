@@ -127,7 +127,7 @@
     <string name="toast_tx_disconnected">Transmitter disconnected</string>
     <string name="toast_connecting_tx">Connecting to transmitter...</string>
     <string name="confirm_reset_title">⚠️ Reset &amp; Re-pair Transmitter</string>
-    <string name="confirm_reset_msg">WARNING: This will reset the cryptographic pairing and generate a new AppKey.\n\nIMPORTANT: The Guardian Connect transmitter MUST be placed in its charger for 10 seconds and removed (green LED blinking) before re-pairing!\n\nAre you sure you want to re-pair?</string>
+    <string name="confirm_reset_msg">Use this ONLY for critical connection or pairing failures (after normal charging, simply reconnect).\n\nWARNING: This will reset the cryptographic pairing and generate a new AppKey.\n\nIMPORTANT: The Guardian Connect transmitter MUST be placed in its charger for 10 seconds and removed (green LED blinking) before re-pairing!\n\nAre you sure you want to re-pair?</string>
     <string name="confirm_reset_yes">Yes, Reset Key</string>
     <string name="confirm_clear_title">Clear Chart History</string>
     <string name="confirm_clear_msg">Delete all glucose history points from the chart and local database?</string>
