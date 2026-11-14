@@ -17,6 +17,7 @@ app/build/
 *.idsig
 *.jks
 *.keystore
+KEYS_BACKUP.txt
 /*.png
 /*.jpg
 
