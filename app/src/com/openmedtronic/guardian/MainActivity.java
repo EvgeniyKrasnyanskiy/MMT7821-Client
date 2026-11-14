@@ -470,6 +470,12 @@ public class MainActivity extends Activity {
         textGlucoseMgDl = findViewById(R.id.textGlucoseMgDl);
         textSensorDetails = findViewById(R.id.textSensorDetails);
         glucoseChart = findViewById(R.id.glucoseChart);
+        if (glucoseChart != null) {
+            SharedPreferences spInit = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+            float initLow = spInit.getFloat(GuardianBleService.KEY_LOW_THRESHOLD_MMOL, 3.9f);
+            float initHigh = spInit.getFloat(GuardianBleService.KEY_HIGH_THRESHOLD_MMOL, 10.0f);
+            glucoseChart.setTargetRange(initLow, initHigh);
+        }
         logsContainer = findViewById(R.id.logsContainer);
         headerLogs = findViewById(R.id.headerLogs);
         btnToggleLogs = findViewById(R.id.btnToggleLogs);
@@ -1213,7 +1219,7 @@ public class MainActivity extends Activity {
             styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
             btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
         } else {
-            btnSnooze.setText(R.string.settings_snooze_30m);
+            btnSnooze.setText(R.string.settings_snooze_btn);
             styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
             btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
         }
@@ -1223,7 +1229,7 @@ public class MainActivity extends Activity {
         btnSnooze.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                GuardianBleService service = GuardianBleService.getInstance();
+                final GuardianBleService service = GuardianBleService.getInstance();
                 long curSnoozeUntil = sp.getLong(KEY_SNOOZE_UNTIL_MS, 0L);
                 if (curSnoozeUntil > System.currentTimeMillis()) {
                     if (service != null) {
@@ -1231,21 +1237,41 @@ public class MainActivity extends Activity {
                     } else {
                         sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, 0L).apply();
                     }
-                    btnSnooze.setText(R.string.settings_snooze_30m);
+                    btnSnooze.setText(R.string.settings_snooze_btn);
                     styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
                     btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
                     Toast.makeText(MainActivity.this, R.string.settings_snooze_resumed_toast, Toast.LENGTH_SHORT).show();
                 } else {
-                    if (service != null) {
-                        service.snoozeAlarms(30);
-                    } else {
-                        long snoozeUntil = System.currentTimeMillis() + 30 * 60_000L;
-                        sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
-                    }
-                    btnSnooze.setText(getString(R.string.settings_snoozed_mins, 30L));
-                    styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
-                    btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
-                    Toast.makeText(MainActivity.this, R.string.settings_snooze_toast, Toast.LENGTH_SHORT).show();
+                    final String[] labels = new String[]{
+                            getString(R.string.settings_snooze_15m),
+                            getString(R.string.settings_snooze_30m),
+                            getString(R.string.settings_snooze_1h),
+                            getString(R.string.settings_snooze_2h),
+                            getString(R.string.settings_snooze_4h)
+                    };
+                    final int[] minutesArr = new int[]{15, 30, 60, 120, 240};
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(R.string.settings_snooze_pick_title)
+                            .setItems(labels, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    int mins = minutesArr[which];
+                                    if (service != null) {
+                                        service.snoozeAlarms(mins);
+                                    } else {
+                                        long snoozeUntil = System.currentTimeMillis() + mins * 60_000L;
+                                        sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
+                                    }
+                                    btnSnooze.setText(getString(R.string.settings_snoozed_mins, (long) mins));
+                                    styleSettingsButton(btnSnooze, Color.parseColor("#3D3114"), false);
+                                    btnSnooze.setTextColor(Color.parseColor("#69F0AE"));
+                                    Toast.makeText(MainActivity.this,
+                                            getString(R.string.settings_snooze_toast_dur, labels[which]),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton(R.string.common_cancel, null)
+                            .show();
                 }
             }
         });
@@ -1332,6 +1358,23 @@ public class MainActivity extends Activity {
             }
         });
         layout.addView(chkAlarms);
+
+        final Button btnAlarmThresholds = new Button(this);
+        updateThresholdsButtonLabel(btnAlarmThresholds, sp);
+        styleSettingsButton(btnAlarmThresholds, Color.parseColor("#2A2A2A"), false);
+        btnAlarmThresholds.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams threshLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        threshLp.topMargin = dpToPx(2);
+        threshLp.bottomMargin = dpToPx(4);
+        btnAlarmThresholds.setLayoutParams(threshLp);
+        btnAlarmThresholds.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAlarmThresholdsDialog(sp, btnAlarmThresholds);
+            }
+        });
+        layout.addView(btnAlarmThresholds);
 
         final CheckBox chkCalAlarm = new CheckBox(this);
         chkCalAlarm.setText(R.string.settings_chk_cal_alarm);
@@ -1618,6 +1661,86 @@ public class MainActivity extends Activity {
         btn.setMinHeight(0);
         btn.setMinimumHeight(0);
         btn.setTextSize(12.5f);
+    }
+
+    private void updateThresholdsButtonLabel(Button btn, SharedPreferences sp) {
+        float low = sp.getFloat(GuardianBleService.KEY_LOW_THRESHOLD_MMOL, 3.9f);
+        float high = sp.getFloat(GuardianBleService.KEY_HIGH_THRESHOLD_MMOL, 10.0f);
+        if (useMgDl) {
+            btn.setText(getString(R.string.settings_thresholds_btn_mgdl,
+                    Math.round(low * 18.0182f), Math.round(high * 18.0182f)));
+        } else {
+            btn.setText(getString(R.string.settings_thresholds_btn_mmol, low, high));
+        }
+    }
+
+    private void showAlarmThresholdsDialog(final SharedPreferences sp, final Button btnThresholds) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dpToPx(16);
+        box.setPadding(pad, dpToPx(10), pad, dpToPx(4));
+
+        String unitLabel = useMgDl ? "mg/dL" : "mmol/L";
+        float curLow = sp.getFloat(GuardianBleService.KEY_LOW_THRESHOLD_MMOL, 3.9f);
+        float curHigh = sp.getFloat(GuardianBleService.KEY_HIGH_THRESHOLD_MMOL, 10.0f);
+
+        final EditText etLow = new EditText(this);
+        etLow.setInputType(InputType.TYPE_CLASS_NUMBER | (useMgDl ? 0 : InputType.TYPE_NUMBER_FLAG_DECIMAL));
+        etLow.setHint(getString(R.string.settings_thresholds_low_hint, unitLabel));
+        etLow.setText(useMgDl ? String.valueOf(Math.round(curLow * 18.0182f)) : String.format(Locale.US, "%.1f", curLow));
+        box.addView(etLow);
+
+        final EditText etHigh = new EditText(this);
+        etHigh.setInputType(InputType.TYPE_CLASS_NUMBER | (useMgDl ? 0 : InputType.TYPE_NUMBER_FLAG_DECIMAL));
+        etHigh.setHint(getString(R.string.settings_thresholds_high_hint, unitLabel));
+        etHigh.setText(useMgDl ? String.valueOf(Math.round(curHigh * 18.0182f)) : String.format(Locale.US, "%.1f", curHigh));
+        box.addView(etHigh);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.settings_thresholds_title)
+                .setView(box)
+                .setPositiveButton(R.string.common_save, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            float lowVal = Float.parseFloat(etLow.getText().toString().trim().replace(',', '.'));
+                            float highVal = Float.parseFloat(etHigh.getText().toString().trim().replace(',', '.'));
+                            float lowMmol = useMgDl ? (lowVal / 18.0182f) : lowVal;
+                            float highMmol = useMgDl ? (highVal / 18.0182f) : highVal;
+                            if (lowMmol < 2.0f || highMmol > 25.0f || lowMmol >= highMmol) {
+                                Toast.makeText(MainActivity.this, R.string.settings_thresholds_invalid, Toast.LENGTH_LONG).show();
+                                return;
+                            }
+                            sp.edit()
+                                    .putFloat(GuardianBleService.KEY_LOW_THRESHOLD_MMOL, lowMmol)
+                                    .putFloat(GuardianBleService.KEY_HIGH_THRESHOLD_MMOL, highMmol)
+                                    .apply();
+                            if (glucoseChart != null) {
+                                glucoseChart.setTargetRange(lowMmol, highMmol);
+                            }
+                            updateThresholdsButtonLabel(btnThresholds, sp);
+                            Toast.makeText(MainActivity.this, R.string.settings_thresholds_saved, Toast.LENGTH_SHORT).show();
+                        } catch (NumberFormatException e) {
+                            Toast.makeText(MainActivity.this, R.string.settings_thresholds_invalid, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                })
+                .setNeutralButton(R.string.settings_thresholds_reset, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        sp.edit()
+                                .putFloat(GuardianBleService.KEY_LOW_THRESHOLD_MMOL, 3.9f)
+                                .putFloat(GuardianBleService.KEY_HIGH_THRESHOLD_MMOL, 10.0f)
+                                .apply();
+                        if (glucoseChart != null) {
+                            glucoseChart.setTargetRange(3.9f, 10.0f);
+                        }
+                        updateThresholdsButtonLabel(btnThresholds, sp);
+                        Toast.makeText(MainActivity.this, R.string.settings_thresholds_saved, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
     }
 
     private void updateQuickTherapyButton(boolean isConnected) {

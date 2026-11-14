@@ -157,8 +157,16 @@ public class GlucoseChartView extends View {
     // Glucose bounds & targets (mmol/L)
     private float minRange = 2.0f;
     private float maxRange = 16.0f;
-    private final float targetLow = 3.9f;
-    private final float targetHigh = 10.0f;
+    private float targetLow = 3.9f;
+    private float targetHigh = 10.0f;
+
+    public void setTargetRange(float lowMmol, float highMmol) {
+        if (lowMmol > 0f && highMmol > lowMmol) {
+            this.targetLow = lowMmol;
+            this.targetHigh = highMmol;
+            invalidate();
+        }
+    }
 
     // Scrolling & Zooming (4h window: 3h past + 1h future buffer)
     private OverScroller scroller;

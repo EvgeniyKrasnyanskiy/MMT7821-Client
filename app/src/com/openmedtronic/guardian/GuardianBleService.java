@@ -73,6 +73,8 @@ public class GuardianBleService extends Service {
     public static final String KEY_USE_MGDL = "use_mgdl";
     public static final String KEY_LAST_PACKET_COUNTER = "last_packet_counter";
     public static final String KEY_ALARMS_ENABLED = "alarms_enabled";
+    public static final String KEY_LOW_THRESHOLD_MMOL = "alarm_low_mmol";
+    public static final String KEY_HIGH_THRESHOLD_MMOL = "alarm_high_mmol";
     public static final String KEY_ALARM_CAL_ENABLED = "alarm_cal_enabled";
     public static final String KEY_ALARM_MISSED_READINGS_ENABLED = "alarm_missed_readings_enabled";
     public static final String KEY_SNOOZE_UNTIL_MS = "snooze_until_ms";
@@ -1832,6 +1834,18 @@ public class GuardianBleService extends Service {
             intent.putExtra("com.eveningoutpost.dexdrip.Extras.Slope", trendRate / 60000.0d);
         }
         sendBroadcast(intent);
+        try {
+            java.util.List<android.content.pm.ResolveInfo> receivers = getPackageManager().queryBroadcastReceivers(intent, 0);
+            if (receivers != null) {
+                for (android.content.pm.ResolveInfo ri : receivers) {
+                    if (ri.activityInfo != null && ri.activityInfo.packageName != null) {
+                        Intent pkgIntent = new Intent(intent);
+                        pkgIntent.setPackage(ri.activityInfo.packageName);
+                        sendBroadcast(pkgIntent);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
         log("Broadcasted BgEstimate to xDrip+/AAPS: " + Math.round(mgDl) + " mg/dL");
     }
 
@@ -2266,11 +2280,18 @@ public class GuardianBleService extends Service {
             return;
         }
 
+        float lowThreshold = sp.getFloat(KEY_LOW_THRESHOLD_MMOL, 3.9f);
+        float highThreshold = sp.getFloat(KEY_HIGH_THRESHOLD_MMOL, 10.0f);
+        if (lowThreshold < 2.0f || highThreshold > 25.0f || lowThreshold >= highThreshold) {
+            lowThreshold = 3.9f;
+            highThreshold = 10.0f;
+        }
+
         int alarmType = 0;
         String alarmTitle = null;
         String alarmText = null;
 
-        if (mmol > 0f && mmol < 3.9f) {
+        if (mmol > 0f && mmol < lowThreshold) {
             alarmType = 1;
             boolean useMgDl = sp.getBoolean(KEY_USE_MGDL, false);
             if (useMgDl) {
@@ -2280,7 +2301,7 @@ public class GuardianBleService extends Service {
                 alarmTitle = getString(R.string.alarm_low_title_mmol, mmol);
                 alarmText = getString(R.string.alarm_low_text_mmol, Math.round(mmol * 18.0182f));
             }
-        } else if (mmol > 10.0f) {
+        } else if (mmol > highThreshold) {
             alarmType = 2;
             boolean useMgDl = sp.getBoolean(KEY_USE_MGDL, false);
             if (useMgDl) {
