@@ -31,10 +31,12 @@ import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.InputType;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.View;
@@ -1063,12 +1065,15 @@ public class MainActivity extends Activity {
         layout.addView(lblCalStatus);
 
         boolean inWarmup = isInWarmup || (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isInWarmup());
+        final boolean isConn = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
+        final boolean isConnecting = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
+        boolean canCalibrate = isConn && !inWarmup;
 
         Button btnCalibrateInSettings = new Button(this);
         btnCalibrateInSettings.setText(R.string.settings_calibrate_early);
-        btnCalibrateInSettings.setTextColor(inWarmup ? Color.parseColor("#777777") : Color.WHITE);
-        styleSettingsButton(btnCalibrateInSettings, Color.parseColor(inWarmup ? "#222222" : "#2A2A2A"), false);
-        btnCalibrateInSettings.setEnabled(!inWarmup);
+        btnCalibrateInSettings.setTextColor(canCalibrate ? Color.WHITE : Color.parseColor("#777777"));
+        styleSettingsButton(btnCalibrateInSettings, Color.parseColor(canCalibrate ? "#2A2A2A" : "#222222"), false);
+        btnCalibrateInSettings.setEnabled(canCalibrate);
         LinearLayout.LayoutParams btnCalLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnCalLp.topMargin = dpToPx(8);
@@ -1076,8 +1081,6 @@ public class MainActivity extends Activity {
         layout.addView(btnCalibrateInSettings);
 
         TextView lblMac = new TextView(this);
-        final boolean isConn = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
-        final boolean isConnecting = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
         lblMac.setText(isConn ? R.string.settings_mac_connected : (isConnecting ? R.string.settings_mac_connecting : R.string.settings_mac_disconnected));
         lblMac.setTextColor(isConn ? Color.parseColor("#81C784") : (isConnecting ? Color.parseColor("#FFD54F") : Color.WHITE));
         lblMac.setTextSize(13);
@@ -1115,14 +1118,41 @@ public class MainActivity extends Activity {
         if (isConn) {
             btnConnAction.setText(R.string.settings_disconnect_tx);
             styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
+            btnConnAction.setTextColor(Color.WHITE);
+            btnConnAction.setEnabled(true);
         } else if (isConnecting) {
             btnConnAction.setText(R.string.settings_stop_connecting);
             styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
+            btnConnAction.setTextColor(Color.WHITE);
+            btnConnAction.setEnabled(true);
         } else {
             btnConnAction.setText(R.string.settings_connect_tx);
-            styleSettingsButton(btnConnAction, Color.parseColor("#1E3A5F"), false);
+            String initialMac = editMacInput.getText().toString().trim().toUpperCase(Locale.US);
+            boolean hasValidMac = BluetoothAdapter.checkBluetoothAddress(initialMac);
+            styleSettingsButton(btnConnAction, Color.parseColor(hasValidMac ? "#1E3A5F" : "#222222"), false);
+            btnConnAction.setTextColor(hasValidMac ? Color.WHITE : Color.parseColor("#777777"));
+            btnConnAction.setEnabled(hasValidMac);
         }
-        btnConnAction.setTextColor(Color.WHITE);
+        editMacInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                boolean connNow = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
+                boolean connectingNow = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
+                if (!connNow && !connectingNow) {
+                    String m = s.toString().trim().toUpperCase(Locale.US);
+                    boolean valid = BluetoothAdapter.checkBluetoothAddress(m);
+                    btnConnAction.setEnabled(valid);
+                    btnConnAction.setTextColor(valid ? Color.WHITE : Color.parseColor("#777777"));
+                    styleSettingsButton(btnConnAction, Color.parseColor(valid ? "#1E3A5F" : "#222222"), false);
+                }
+            }
+        });
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnLp.topMargin = dpToPx(6);
