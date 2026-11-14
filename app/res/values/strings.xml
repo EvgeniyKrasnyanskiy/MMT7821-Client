@@ -92,6 +92,8 @@
     <string name="settings_mac_connecting">Transmitter MAC Address (Connecting...):</string>
     <string name="settings_mac_disconnected">Transmitter MAC Address (Disconnected):</string>
     <string name="settings_scan_ble">🔍 Scan for Transmitter (BLE)</string>
+    <string name="settings_scan_stop">⏹ Stop Scan (15s)...</string>
+    <string name="settings_scan_found">✓ Found: %s</string>
     <string name="settings_disconnect_tx">Disconnect Transmitter</string>
     <string name="settings_stop_connecting">🛑 Stop Connecting</string>
     <string name="settings_connect_tx">Connect to Transmitter</string>

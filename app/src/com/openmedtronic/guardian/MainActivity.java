@@ -1576,14 +1576,15 @@ public class MainActivity extends Activity {
                 scanner.stopScan(bleScanCallback);
             } catch (Exception ignored) {}
             bleScanCallback = null;
-            btnScan.setText("🔍 Scan for Transmitter (BLE)");
+            btnScan.setText(R.string.settings_scan_ble);
+            styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
             return;
         }
 
-        btnScan.setText("⏹ Stop Scan (15s)...");
+        btnScan.setText(R.string.settings_scan_stop);
         styleSettingsButton(btnScan, Color.parseColor("#E65100"), false);
         appendLog("Starting BLE scan for Guardian Connect transmitter...");
-        Toast.makeText(this, "Scanning for nearby Medtronic transmitters...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.toast_scanning_ble, Toast.LENGTH_SHORT).show();
 
         bleScanCallback = new ScanCallback() {
             @Override
@@ -1625,7 +1626,7 @@ public class MainActivity extends Activity {
                             }
                             ed.apply();
                             updateTransmitterNameDisplay();
-                            btnScan.setText("✓ Found: " + addr);
+                            btnScan.setText(getString(R.string.settings_scan_found, addr));
                             styleSettingsButton(btnScan, Color.parseColor("#2E7D32"), false);
                             Toast.makeText(MainActivity.this, "Transmitter found: " + addr, Toast.LENGTH_LONG).show();
                         }
@@ -1639,7 +1640,7 @@ public class MainActivity extends Activity {
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        btnScan.setText("🔍 Scan for Transmitter (BLE)");
+                        btnScan.setText(R.string.settings_scan_ble);
                         styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
                         Toast.makeText(MainActivity.this, "BLE scan error: " + errorCode, Toast.LENGTH_SHORT).show();
                     }
@@ -1662,7 +1663,7 @@ public class MainActivity extends Activity {
                 scanner.startScan(null, settings, bleScanCallback);
             } catch (Exception ex) {
                 appendLog("Could not start BLE scan: " + ex.getMessage());
-                btnScan.setText("🔍 Scan for Transmitter (BLE)");
+                btnScan.setText(R.string.settings_scan_ble);
                 styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
                 bleScanCallback = null;
                 return;
@@ -1677,7 +1678,7 @@ public class MainActivity extends Activity {
                         scanner.stopScan(bleScanCallback);
                     } catch (Exception ignored) {}
                     bleScanCallback = null;
-                    btnScan.setText("🔍 Scan for Transmitter (BLE)");
+                    btnScan.setText(R.string.settings_scan_ble);
                     styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
                     appendLog("BLE scan timed out (15s).");
                 }

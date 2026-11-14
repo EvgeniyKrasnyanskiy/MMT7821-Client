@@ -92,6 +92,8 @@
     <string name="settings_mac_connecting">MAC-адрес трансмиттера (подключение...):</string>
     <string name="settings_mac_disconnected">MAC-адрес трансмиттера (отключён):</string>
     <string name="settings_scan_ble">🔍 Поиск трансмиттера (BLE)</string>
+    <string name="settings_scan_stop">⏹ Остановить поиск (15с)...</string>
+    <string name="settings_scan_found">✓ Найден: %s</string>
     <string name="settings_disconnect_tx">Отключить трансмиттер</string>
     <string name="settings_stop_connecting">🛑 Остановить подключение</string>
     <string name="settings_connect_tx">Подключить трансмиттер</string>
