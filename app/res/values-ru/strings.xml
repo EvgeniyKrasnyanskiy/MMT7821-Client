@@ -108,6 +108,9 @@
     <string name="settings_snooze_1h">1 час</string>
     <string name="settings_snooze_2h">2 часа</string>
     <string name="settings_snooze_4h">4 часа</string>
+    <string name="settings_snooze_8h">8 часов</string>
+    <string name="settings_snooze_12h">12 часов</string>
+    <string name="settings_snooze_24h">24 часа</string>
     <string name="settings_snooze_toast_dur">Тревоги отложены на %s</string>
     <string name="settings_snooze_resumed_toast">Тревоги возобновлены</string>
     <string name="settings_thresholds_btn_mmol">🎯 Пороги: %1$.1f – %2$.1f mmol/L</string>
@@ -126,6 +129,8 @@
     <string name="settings_chk_cal_alarm">🩸 Звук при запросе калибровки</string>
     <string name="settings_chk_missed_alarm">⚠️ Тревога при потере сигнала (&gt; 20 мин)</string>
     <string name="settings_chk_xdrip">📡 Трансляция в xDrip+ / AAPS</string>
+    <string name="xdrip_setup_title">📡 Настройка xDrip+ / AAPS</string>
+    <string name="xdrip_setup_msg">MMT7821-Client отправляет показания глюкозы через Android Broadcast:\ncom.eveningoutpost.dexdrip.BgEstimate\n\nНастройка в xDrip+:\n1. Откройте xDrip+ → Настройки → Источник данных (Hardware Data Source).\n2. Выберите «640G / EverSense» или «Libre (patched App)» (зависит от версии xDrip+).\n3. В разделе «Между приложениями» (Inter-app settings) включите приём локальной трансляции («Accept Broadcasts», если доступно) и «Локальная трансляция» (Broadcast Locally) для передачи в AAPS.\n\nНастройка в AndroidAPS (AAPS):\n• Конфигуратор → Источник ГК (BG Source) → выберите «xDrip+».\n\nСовет: отключите оптимизацию батареи для обоих приложений, чтобы трансляция в фоне не задерживалась.</string>
     <string name="settings_chk_logs">📋 Показывать логи протокола BLE</string>
 
     <!-- Common Actions & Dialogs -->

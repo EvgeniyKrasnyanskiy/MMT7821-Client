@@ -108,6 +108,9 @@
     <string name="settings_snooze_1h">1 hour</string>
     <string name="settings_snooze_2h">2 hours</string>
     <string name="settings_snooze_4h">4 hours</string>
+    <string name="settings_snooze_8h">8 hours</string>
+    <string name="settings_snooze_12h">12 hours</string>
+    <string name="settings_snooze_24h">24 hours</string>
     <string name="settings_snooze_toast_dur">Alarms snoozed for %s</string>
     <string name="settings_snooze_resumed_toast">Alarms resumed</string>
     <string name="settings_thresholds_btn_mmol">🎯 Thresholds: %1$.1f – %2$.1f mmol/L</string>
@@ -126,6 +129,8 @@
     <string name="settings_chk_cal_alarm">🩸 Sound Alert on Calibration Request</string>
     <string name="settings_chk_missed_alarm">⚠️ Alert on No Sensor Readings (&gt; 20 min)</string>
     <string name="settings_chk_xdrip">📡 Broadcast to xDrip+ / AAPS</string>
+    <string name="xdrip_setup_title">📡 xDrip+ / AAPS Setup</string>
+    <string name="xdrip_setup_msg">MMT7821-Client broadcasts glucose readings via Android Intent:\ncom.eveningoutpost.dexdrip.BgEstimate\n\nTo receive readings in xDrip+:\n1. Open xDrip+ → Settings → Hardware Data Source.\n2. Select \"640G / EverSense\" or \"Libre (patched App)\" (depending on xDrip+ version).\n3. In xDrip+ → Inter-app settings, enable \"Accept Broadcasts\" (if available) and \"Broadcast Locally\" to forward to AAPS.\n\nTo receive in AndroidAPS (AAPS):\n• Config Builder → BG Source → select \"xDrip+\".\n\nTip: Disable battery optimization for both apps so background broadcasts are not delayed.</string>
     <string name="settings_chk_logs">📋 Show BLE Protocol Logs</string>
 
     <!-- Common Actions & Dialogs -->

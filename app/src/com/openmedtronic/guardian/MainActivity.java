@@ -1247,9 +1247,12 @@ public class MainActivity extends Activity {
                             getString(R.string.settings_snooze_30m),
                             getString(R.string.settings_snooze_1h),
                             getString(R.string.settings_snooze_2h),
-                            getString(R.string.settings_snooze_4h)
+                            getString(R.string.settings_snooze_4h),
+                            getString(R.string.settings_snooze_8h),
+                            getString(R.string.settings_snooze_12h),
+                            getString(R.string.settings_snooze_24h)
                     };
-                    final int[] minutesArr = new int[]{15, 30, 60, 120, 240};
+                    final int[] minutesArr = new int[]{15, 30, 60, 120, 240, 480, 720, 1440};
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle(R.string.settings_snooze_pick_title)
                             .setItems(labels, new DialogInterface.OnClickListener() {
@@ -1412,6 +1415,13 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 sp.edit().putBoolean(KEY_XDRIP_BROADCAST, isChecked).apply();
+                if (isChecked) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(R.string.xdrip_setup_title)
+                            .setMessage(R.string.xdrip_setup_msg)
+                            .setPositiveButton(R.string.common_ok, null)
+                            .show();
+                }
             }
         });
         layout.addView(chkXdrip);
