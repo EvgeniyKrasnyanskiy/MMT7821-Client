@@ -229,6 +229,11 @@ public class GuardianBleService extends Service {
     }
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.applyLocale(newBase));
+    }
+
+    @Override
     public IBinder onBind(Intent intent) {
         return binder;
     }
@@ -599,7 +604,7 @@ public class GuardianBleService extends Service {
         isConnecting = true;
         isGattConnected = false;
         acquireWakeLockBriefly(10_000L);
-        updateStatus("Connecting to " + targetMac + "...");
+        updateStatus(LocaleHelper.applyLocale(this).getString(R.string.svc_connecting_to, targetMac));
         log("Connecting to " + targetMac + " (isPaired=" + isPaired + ")...");
 
         try {
@@ -634,7 +639,7 @@ public class GuardianBleService extends Service {
         handshakeState = HandshakeState.IDLE;
         handshakeHandler.removeCallbacksAndMessages(null);
         mainHandler.removeCallbacks(gattWriteTimeoutRunnable);
-        updateStatus("Disconnected");
+        updateStatus(LocaleHelper.applyLocale(this).getString(R.string.status_disconnected));
         log("Disconnected from transmitter.");
         notifyConnectionState(false);
         updateNotification();
@@ -804,7 +809,7 @@ public class GuardianBleService extends Service {
                 servicesDiscoveryTriggered = false;
                 mainHandler.removeCallbacks(mtuTimeoutRunnable);
                 handshakeState = HandshakeState.IDLE;
-                updateStatus("Disconnected");
+                updateStatus(LocaleHelper.applyLocale(GuardianBleService.this).getString(R.string.status_disconnected));
                 log("GATT Disconnected (status: " + status + ")");
                 notifyConnectionState(false);
                 updateNotification();
@@ -825,7 +830,7 @@ public class GuardianBleService extends Service {
                         }, delaySec * 1000L);
                     } else {
                         log("Transmitter offline / disconnected. Auto-reconnect stopped. Status: Disconnected.");
-                        updateStatus("Disconnected");
+                        updateStatus(LocaleHelper.applyLocale(GuardianBleService.this).getString(R.string.status_disconnected));
                     }
                 }
             }
@@ -1776,7 +1781,7 @@ public class GuardianBleService extends Service {
                             .putFloat(KEY_LAST_TREND, (float) trendRate)
                             .apply();
 
-                    updateStatus("Updated at " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date()));
+                    updateStatus(LocaleHelper.applyLocale(GuardianBleService.this).getString(R.string.status_updated_at, new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date())));
                 } else {
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
                             .putInt(KEY_LAST_RAW, rawVal34)

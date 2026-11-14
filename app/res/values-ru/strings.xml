@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MMT7821 Client</string>
+    <string name="widget_name">MMT7821 Client CGM</string>
+    <string name="widget_desc">Мониторинг глюкозы в реальном времени со стрелкой тренда, калибровкой и зарядом трансмиттера</string>
+
+    <!-- First Launch Disclaimer -->
+    <string name="disclaimer_title">Медицинский отказ от ответственности</string>
+    <string name="disclaimer_message">ТОЛЬКО ДЛЯ ИССЛЕДОВАТЕЛЬСКИХ И ОБРАЗОВАТЕЛЬНЫХ (DIY) ЦЕЛЕЙ.\n\nMMT7821-Client НЕ является сертифицированным медицинским изделием и не прошёл оценку FDA, EMA или иных регуляторов.\n\nВозможны сбои ПО или Bluetooth. НИКОГДА не принимайте решения о дозировании инсулина или лечении только на основании данных этого приложения — всегда проверяйте показания сертифицированным глюкометром.\n\nПродолжая использование, вы принимаете на себя всю ответственность и все связанные риски.</string>
+    <string name="disclaimer_accept">Понимаю и принимаю</string>
+    <string name="disclaimer_exit">Выход</string>
+
+    <!-- Permissions & Battery Optimization -->
+    <string name="err_ble_permission_required">Для подключения к трансмиттеру необходимо разрешение Bluetooth</string>
+    <string name="battery_opt_title">Работа в фоне</string>
+    <string name="battery_opt_message">Для стабильного круглосуточного получения показаний и тревог разрешите приложению работу без ограничений энергосбережения.</string>
+    <string name="battery_opt_allow">Разрешить</string>
+    <string name="battery_opt_later">Позже</string>
+
+    <!-- Main Screen & Controls -->
+    <string name="status_disconnected">Отключено</string>
+    <string name="sensor_details_waiting">СК: -- | Тренд: -- | Статус: Ожидание...</string>
+    <string name="btn_enter_calibration">🩸 Ввести калибровку (СК)</string>
+    <string name="btn_log_therapy_bg">+ 💉/🍞/🩸 Записать терапию и СК</string>
+    <string name="logs_header">📋 Логи протокола BLE</string>
+    <string name="transmitter_disconnected">Трансмиттер отключён</string>
+    <string name="transmitter_disconnected_title">Трансмиттер отключён</string>
+    <string name="warmup_in_progress">Прогрев сенсора Enlite...</string>
+    <string name="warmup_status">Прогрев сенсора</string>
+    <string name="cal_needed">Требуется калибровка</string>
+    <string name="cal_waiting_first">Ожидание 1-й калибровки</string>
+    <string name="cal_processing">Обработка калибровки...</string>
+    <string name="cal_processing_desc">Обработка калибровки (5–15 мин)...</string>
+    <string name="cal_waiting_accept">⏳ Ожидание подтверждения калибровки...</string>
+    <string name="warmup_countdown_hms">⏳ Прогрев: %1$02d:%2$02d:%3$02d</string>
+    <string name="warmup_countdown_ms">⏳ Прогрев: %1$02d:%2$02d</string>
+    <string name="warmup_stabilizing">⏳ Стабилизация прогрева...</string>
+    <string name="next_reading_in">След. замер: %1$02d:%2$02d</string>
+    <string name="next_reading_none">След. замер: --:--</string>
+    <string name="reading_in_progress">Получение данных...</string>
+    <string name="badge_cal_warmup">🩸 Прогрев</string>
+    <string name="badge_cal_processing">⏳ Обработка</string>
+    <string name="badge_cal_now">🩸 Калибровать</string>
+    <string name="badge_cal_due">🩸 Пора</string>
+
+    <!-- Widget -->
+    <string name="widget_disconnected">⚠️ Отключён (%s)</string>
+    <string name="widget_warmup">Прогрев: %1$02d:%2$02d</string>
+    <string name="widget_cal_pending">Калибровка...</string>
+    <string name="widget_cal_required">Нужна калибровка</string>
+    <string name="widget_no_signal">⚠️ Нет сигнала (%s)</string>
+    <string name="widget_waiting">Ожидание сенсора...</string>
+    <string name="widget_offline">⚠️ Офлайн</string>
+    <string name="widget_badge_warmup">⏳ Прогрев</string>
+    <string name="widget_badge_in_progress">⏳ В процессе</string>
+    <string name="widget_badge_cal_now">🩸 Калибровать</string>
+
+    <!-- Alarms -->
+    <string name="alarm_low_title_mgdl">🚨 НИЗКИЙ СК: %d mg/dL</string>
+    <string name="alarm_low_text_mgdl">Глюкоза ниже 70 mg/dL (%.1f mmol/L). Срочно примите быстрые углеводы!</string>
+    <string name="alarm_low_title_mmol">🚨 НИЗКИЙ СК: %.1f mmol/L</string>
+    <string name="alarm_low_text_mmol">Глюкоза ниже 3.9 mmol/L (%d mg/dL). Срочно примите быстрые углеводы!</string>
+    <string name="alarm_high_title_mgdl">⚠️ ВЫСОКИЙ СК: %d mg/dL</string>
+    <string name="alarm_high_text_mgdl">Глюкоза выше 180 mg/dL (%.1f mmol/L). Проверьте кетоны и инсулин.</string>
+    <string name="alarm_high_title_mmol">⚠️ ВЫСОКИЙ СК: %.1f mmol/L</string>
+    <string name="alarm_high_text_mmol">Глюкоза выше 10.0 mmol/L (%d mg/dL). Проверьте кетоны и инсулин.</string>
+    <string name="alarm_cal_title">🩸 Требуется калибровка сенсора</string>
+    <string name="alarm_cal_text">Для продолжения мониторинга введите показание глюкометра.</string>
+    <string name="alarm_snooze_30m">🔕 Отложить 30м</string>
+
+    <!-- Guide & Disclaimer Dialog -->
+    <string name="guide_title">ℹ️ Справка и дисклеймер</string>
+    <string name="guide_close">Закрыть</string>
+    <string name="guide_body">📖 О приложении MMT7821-Client\nMMT7821-Client — независимый открытый DIY-клиент для трансмиттера Medtronic Guardian Connect (MMT-7821) и сенсоров Enlite / Guardian Sensor 3. Работает полностью офлайн без серверов CareLink и ограничений по моделям смартфонов.\n\n🚀 Быстрый старт и сопряжение\n1. Сброс на зарядке: снимите трансмиттер с сенсора, поставьте на зарядное устройство минимум на 10 секунд, затем снимите (должен замигать зелёный светодиод).\n2. Подключение: откройте Настройки, нажмите «Поиск трансмиттера (BLE)» или введите MAC-адрес и нажмите «Подключить». Подождите 10–15 секунд до завершения криптографического сопряжения.\n3. Запуск сенсора и прогрев: наденьте трансмиттер на установленный сенсор. Автоматически начнётся 2-часовой аппаратный прогрев.\n4. Калибровка: по окончании прогрева («Ожидание 1-й калибровки») введите показание глюкометра. Калибруйте каждые 6–12 часов при стабильном сахаре.\n\n⏳ Срок службы сенсора и перезапуск\nТрансмиттер MMT-7821 ограничивает работу сенсора 6 днями на уровне прошивки. Для перезапуска сессии снимите трансмиттер с сенсора, поставьте на зарядку на 15–20 минут для сброса таймера и снова наденьте.\n\n⚠️ Медицинский и юридический дисклеймер\nТОЛЬКО ДЛЯ ИССЛЕДОВАТЕЛЬСКИХ И ОБРАЗОВАТЕЛЬНЫХ (DIY) ЦЕЛЕЙ. Приложение НЕ является медицинским изделием и не сертифицировано FDA или иными регуляторами. Возможны сбои ПО и Bluetooth. НИКОГДА не принимайте решения о дозах инсулина только по данным приложения — всегда проверяйте сахар глюкометром.</string>
+
+    <!-- Chart -->
+    <string name="chart_waiting_data">Ожидание данных сенсора (~5 мин)...</string>
+    <string name="chart_now">Сейчас</string>
+    <string name="chart_zoom_hours">%dч</string>
+
+    <!-- Language Selector -->
+    <string name="lang_button_label">🌐 Язык: %s</string>
+    <string name="lang_dialog_title">Выбор языка</string>
+    <string name="lang_system">Как в системе</string>
+    <string name="lang_en">English</string>
+    <string name="lang_ru">Русский</string>
+
+    <!-- Settings Dialog -->
+    <string name="settings_title">⚙️ Настройки и трансмиттер</string>
+    <string name="settings_calibrate_early">🩸 Калибровать (досрочно)</string>
+    <string name="settings_mac_connected">MAC-адрес трансмиттера (подключён):</string>
+    <string name="settings_mac_connecting">MAC-адрес трансмиттера (подключение...):</string>
+    <string name="settings_mac_disconnected">MAC-адрес трансмиттера (отключён):</string>
+    <string name="settings_scan_ble">🔍 Поиск трансмиттера (BLE)</string>
+    <string name="settings_disconnect_tx">Отключить трансмиттер</string>
+    <string name="settings_stop_connecting">🛑 Остановить подключение</string>
+    <string name="settings_connect_tx">Подключить трансмиттер</string>
+    <string name="settings_unit_mgdl">📏 Единицы: mg/dL</string>
+    <string name="settings_unit_mmol">📏 Единицы: mmol/L</string>
+    <string name="settings_snooze_30m">🔕 Отложить 30м</string>
+    <string name="settings_snooze_toast">Тревоги отложены на 30 минут</string>
+    <string name="settings_export_csv">💾 Экспорт SiDiary CSV</string>
+    <string name="settings_guide_info">ℹ️ Справка и инфо</string>
+    <string name="settings_clear_history">🗑️ Очистить историю</string>
+    <string name="settings_reset_pair">⚠️ Сброс и пересопряжение</string>
+    <string name="settings_chk_alarms">🔔 Звуковые тревоги (гипо / гипер)</string>
+    <string name="settings_chk_cal_alarm">🩸 Звук при запросе калибровки</string>
+    <string name="settings_chk_missed_alarm">⚠️ Тревога при потере сигнала (&gt; 20 мин)</string>
+    <string name="settings_chk_xdrip">📡 Трансляция в xDrip+ / AAPS</string>
+    <string name="settings_chk_logs">📋 Показывать логи протокола BLE</string>
+
+    <!-- Common Actions & Dialogs -->
+    <string name="common_ok">ОК</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_delete">Удалить</string>
+    <string name="common_close">Закрыть</string>
+    <string name="common_stop">Стоп</string>
+    <string name="common_disconnect">Отключить</string>
+    <string name="confirm_disconnect_title">Отключить трансмиттер</string>
+    <string name="confirm_stop_conn_title">Остановить подключение</string>
+    <string name="confirm_disconnect_msg">Отключиться от трансмиттера %s?</string>
+    <string name="confirm_stop_conn_msg">Отменить попытку подключения?</string>
+    <string name="toast_tx_disconnected">Трансмиттер отключён</string>
+    <string name="toast_connecting_tx">Подключение к трансмиттеру...</string>
+    <string name="confirm_reset_title">⚠️ Сброс и пересопряжение</string>
+    <string name="confirm_reset_msg">ВНИМАНИЕ: это сбросит криптографическое сопряжение и создаст новый AppKey.\n\nВАЖНО: перед пересопряжением трансмиттер Guardian Connect ОБЯЗАТЕЛЬНО нужно поставить на зарядку на 10 секунд и снять (должен замигать зелёный индикатор)!\n\nВы уверены, что хотите пересопрячь?</string>
+    <string name="confirm_reset_yes">Да, сбросить ключ</string>
+    <string name="confirm_clear_title">Очистить историю графика</string>
+    <string name="confirm_clear_msg">Удалить все точки глюкозы с графика и из локальной базы?</string>
+    <string name="confirm_clear_yes">Очистить</string>
+    <string name="toast_history_cleared">График и история очищены</string>
+    <string name="toast_csv_saved">Экспорт SiDiary CSV успешно сохранён!</string>
+    <string name="toast_csv_error">Ошибка сохранения CSV: %s</string>
+    <string name="toast_export_error">Ошибка экспорта: %s</string>
+    <string name="toast_saved_file">Сохранено: %s</string>
+    <string name="share_csv_title">Поделиться экспортом SiDiary</string>
+
+    <!-- BLE Scanner & Connection -->
+    <string name="toast_grant_bt_first">Сначала выдайте разрешения Bluetooth/Геолокации</string>
+    <string name="toast_bt_disabled">Bluetooth выключен</string>
+    <string name="toast_ble_no_scanner">BLE-сканер недоступен на этом устройстве</string>
+    <string name="toast_scanning_ble">Поиск трансмиттеров Medtronic рядом...</string>
+    <string name="toast_tx_found">Найден трансмиттер: %s</string>
+    <string name="toast_scan_error">Ошибка сканирования BLE: %d</string>
+    <string name="toast_enter_mac">Введите MAC-адрес или найдите в Настройках</string>
+
+    <!-- Calibration & Therapy Dialogs -->
+    <string name="cal_unavail_title">Калибровка недоступна</string>
+    <string name="cal_unavail_msg">Идёт прогрев сенсора Enlite (~2 часа).\n\nВвод калибровки возможен только после завершения прогрева.</string>
+    <string name="cal_dialog_title">Калибровка сенсора Enlite</string>
+    <string name="cal_dialog_msg">Введите текущий сахар с глюкометра (%s).\n\nРекомендуется калибровать при стабильном уровне глюкозы.</string>
+    <string name="cal_dialog_btn">Калибровать</string>
+    <string name="cal_hint_mgdl">напр. 100</string>
+    <string name="cal_hint_mmol">напр. 5.6</string>
+    <string name="toast_cal_warmup">Калибровка недоступна: идёт прогрев</string>
+    <string name="toast_value_empty">Значение не введено</string>
+    <string name="therapy_dialog_title">Записать терапию и СК</string>
+    <string name="therapy_now">Сейчас</string>
+    <string name="therapy_lbl_bolus">💉 Болюс инсулина (ЕД):</string>
+    <string name="therapy_hint_bolus">напр. 4.5</string>
+    <string name="therapy_lbl_carbs">🍞 Углеводы (граммы):</string>
+    <string name="therapy_hint_carbs">напр. 50</string>
+    <string name="therapy_lbl_bg">🩸 Глюкометр (%s, необязательно):</string>
+    <string name="therapy_lbl_note">📝 Заметка / приём пищи (необяз.):</string>
+    <string name="therapy_note_hint">напр. Обед, Перекус, Коррекция</string>
+    <string name="therapy_preset_lunch">Обед</string>
+    <string name="therapy_preset_snack">Перекус</string>
+    <string name="therapy_preset_correction">Коррекция</string>
+    <string name="therapy_details_title">Детали терапии</string>
+    <string name="toast_therapy_deleted">Запись терапии удалена</string>
+    <string name="sensor_cal_title">Калибровка сенсора</string>
+    <string name="manual_bg_title">Замер глюкометром</string>
+    <string name="toast_bg_deleted">Замер глюкометром удалён</string>
+    <string name="toast_delete_failed">Не удалось удалить точку</string>
+    <string name="toast_invalid_bg">Некорректное значение СК</string>
+    <string name="toast_invalid_insulin">Некорректная доза инсулина</string>
+    <string name="toast_invalid_carbs">Некорректное количество углеводов</string>
+    <string name="toast_enter_something">Введите СК, инсулин, углеводы или заметку</string>
+    <string name="toast_insulin_max">Слишком большая доза (макс. 100 ЕД)</string>
+    <string name="toast_carbs_max">Слишком много углеводов (макс. 500 г)</string>
+    <string name="waiting_sensor_reading">Ожидание показаний сенсора...</string>
+    <string name="connected_to_tx">Подключено к трансмиттеру</string>
+    <string name="badge_sensor_expired">⏳ Истёк</string>
+    <string name="cal_summary_none">Калибровка: ещё не калибровался</string>
+    <string name="cal_summary_last">Посл. калибровка: %1$s (%2$s)</string>
+    <string name="status_updated_at">Обновлено в %s</string>
+
+    <!-- BLE Service Statuses -->
+    <string name="svc_mac_not_set">MAC-адрес не задан</string>
+    <string name="svc_bt_disabled">Bluetooth выключен</string>
+    <string name="svc_grant_bt">Выдайте разрешение Bluetooth в приложении</string>
+    <string name="svc_connecting_to">Подключение к %s...</string>
+    <string name="svc_cal_sent">⏳ Калибровка отправлена, обработка...</string>
+    <string name="svc_sending_config">Отправка конфигурации сенсора (Opcode 0x05)...</string>
+    <string name="svc_connected_mtu">Подключено. Запрос MTU...</string>
+    <string name="svc_subscribing">Подписка на уведомления...</string>
+    <string name="svc_indications_ready">Подписка готова. Запуск обмена...</string>
+    <string name="svc_stabilizing_retry">Стабилизация трансмиттера... Повтор %d/3</string>
+    <string name="svc_error_134">Ошибка 134: снимите трансмиттер с сенсора и сбросьте в зарядке!</string>
+    <string name="svc_time_sync_sent">Запрос синхронизации времени отправлен...</string>
+    <string name="svc_monitoring_active">Мониторинг активен. Ожидание замера (~5 мин)...</string>
+    <string name="svc_preparing_pairing">Подготовка сопряжения...</string>
+    <string name="svc_syncing_time">Синхронизация времени...</string>
+    <string name="svc_pairing_ok">Сопряжение успешно! Синхронизация времени...</string>
+    <string name="svc_resending_key">Повторная отправка ключа...</string>
+    <string name="svc_charger_reset_req">Требуется сброс трансмиттера на зарядке</string>
+    <string name="svc_cmd_accepted">Команда принята трансмиттером!</string>
+</resources>

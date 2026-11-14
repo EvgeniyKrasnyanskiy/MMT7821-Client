@@ -815,7 +815,7 @@ public class GlucoseChartView extends View {
             pointHits.clear();
             if (points.isEmpty()) {
                 textPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText("Waiting for sensor data (~5 min)...", padLeft + plotW / 2f, padTop + plotH / 2f, textPaint);
+                canvas.drawText(getContext().getString(R.string.chart_waiting_data), padLeft + plotW / 2f, padTop + plotH / 2f, textPaint);
                 textPaint.setTextAlign(Paint.Align.LEFT);
                 return;
             }
@@ -1052,7 +1052,7 @@ public class GlucoseChartView extends View {
         boolean drewNow = false;
         if (latestX >= padLeft + dpToPx(15) && latestX <= padLeft + plotW - dpToPx(15)) {
             axisTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("Now", latestX, timeY, axisTextPaint);
+            canvas.drawText(getContext().getString(R.string.chart_now), latestX, timeY, axisTextPaint);
             canvas.drawLine(latestX, padTop + plotH, latestX, padTop + plotH + dpToPx(3), gridPaint);
             drewNow = true;
         }
@@ -1119,7 +1119,7 @@ public class GlucoseChartView extends View {
             canvas.drawRoundRect(rect, dpToPx(6), dpToPx(6), zoomChipBgPaint);
             canvas.drawRoundRect(rect, dpToPx(6), dpToPx(6), zoomChipBorderPaint);
 
-            String label = ZOOM_PRESETS[i] + "h";
+            String label = getContext().getString(R.string.chart_zoom_hours, ZOOM_PRESETS[i]);
             float textY = rect.centerY() - (fm.ascent + fm.descent) / 2f;
             canvas.drawText(label, rect.centerX(), textY, zoomChipTextPaint);
         }

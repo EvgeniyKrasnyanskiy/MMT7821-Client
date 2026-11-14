@@ -216,17 +216,19 @@ public class MainActivity extends Activity {
             boolean isConnected = (service != null && service.isDeviceConnected());
 
             if (!isConnected) {
-                textCountdown.setText("Transmitter Disconnected");
+                textCountdown.setText(R.string.transmitter_disconnected_title);
                 textCountdown.setTextColor(Color.parseColor("#888888"));
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
-                if (textGlucoseMgDl != null && !"Disconnected".equals(textGlucoseMgDl.getText().toString())) {
-                    textGlucoseMgDl.setText("Disconnected");
+                String disconnectedStr = getString(R.string.status_disconnected);
+                if (textGlucoseMgDl != null && !disconnectedStr.equals(textGlucoseMgDl.getText().toString())) {
+                    textGlucoseMgDl.setText(disconnectedStr);
                     textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
                 }
-                if (textSensorDetails != null && !"Transmitter disconnected".equals(textSensorDetails.getText().toString())) {
-                    textSensorDetails.setText("Transmitter disconnected");
+                String txDisconnectedStr = getString(R.string.transmitter_disconnected);
+                if (textSensorDetails != null && !txDisconnectedStr.equals(textSensorDetails.getText().toString())) {
+                    textSensorDetails.setText(txDisconnectedStr);
                     textSensorDetails.setTextColor(Color.parseColor("#888888"));
                 }
                 updateStaleState(false);
@@ -242,24 +244,24 @@ public class MainActivity extends Activity {
                     long remMins = (remTotalSec % 3600L) / 60L;
                     long remSecs = remTotalSec % 60L;
                     if (remHours > 0) {
-                        textCountdown.setText(String.format(Locale.US, "⏳ Warm-up: %02d:%02d:%02d", remHours, remMins, remSecs));
+                        textCountdown.setText(getString(R.string.warmup_countdown_hms, remHours, remMins, remSecs));
                     } else {
-                        textCountdown.setText(String.format(Locale.US, "⏳ Warm-up: %02d:%02d", remMins, remSecs));
+                        textCountdown.setText(getString(R.string.warmup_countdown_ms, remMins, remSecs));
                     }
                 } else {
-                    textCountdown.setText("⏳ Warm-up stabilizing...");
+                    textCountdown.setText(R.string.warmup_stabilizing);
                 }
                 textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                 updateStaleState(false);
             } else if (calPending) {
-                textCountdown.setText("⏳ Waiting for calibration acceptance...");
+                textCountdown.setText(R.string.cal_waiting_accept);
                 textCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
                 updateStaleState(false);
             } else if (calReq) {
-                textCountdown.setText(lastCalTime > 0 ? "🩸 Calibration Needed" : "Waiting for 1st Calibration");
+                textCountdown.setText(lastCalTime > 0 ? "🩸 " + getString(R.string.cal_needed) : getString(R.string.cal_waiting_first));
                 textCountdown.setTextColor(Color.parseColor("#FFD54F"));
                 if (btnQuickCalibrate != null && btnQuickCalibrate.getVisibility() != View.VISIBLE) {
                     btnQuickCalibrate.setVisibility(View.VISIBLE);
@@ -274,9 +276,9 @@ public class MainActivity extends Activity {
                 if (remainingSec > 0) {
                     long mins = remainingSec / 60;
                     long secs = remainingSec % 60;
-                    textCountdown.setText(String.format(Locale.US, "Next reading: %02d:%02d", mins, secs));
+                    textCountdown.setText(getString(R.string.next_reading_in, mins, secs));
                 } else {
-                    textCountdown.setText("Reading in progress...");
+                    textCountdown.setText(R.string.reading_in_progress);
                 }
                 textCountdown.setTextColor(Color.parseColor("#CCCCCC"));
                 updateStaleState(elapsedMs > 11 * 60_000L);
@@ -284,7 +286,7 @@ public class MainActivity extends Activity {
                 if (btnQuickCalibrate != null && !calReq) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
-                textCountdown.setText("Next reading: --:--");
+                textCountdown.setText(R.string.next_reading_none);
                 textCountdown.setTextColor(Color.parseColor("#CCCCCC"));
                 updateStaleState(false);
             }
@@ -371,7 +373,7 @@ public class MainActivity extends Activity {
                         textSensorDays.setTextColor(Color.parseColor("#FF5252"));
                     }
                 } else {
-                    textSensorDays.setText("⏳ Expired");
+                    textSensorDays.setText(R.string.badge_sensor_expired);
                     textSensorDays.setTextColor(Color.parseColor("#FF5252"));
                 }
             }
@@ -386,10 +388,15 @@ public class MainActivity extends Activity {
             long mins = (diffMs % 3600_000L) / (60_000L);
             String timeStr = new SimpleDateFormat("dd.MM HH:mm", Locale.getDefault()).format(new Date(calTime));
             String agoStr = hours > 0 ? (hours + "h ago") : (mins + "m ago");
-            return String.format(Locale.US, "Last calibration: %s (%s)", timeStr, agoStr);
+            return getString(R.string.cal_summary_last, timeStr, agoStr);
         } else {
-            return "Calibration: not calibrated yet";
+            return getString(R.string.cal_summary_none);
         }
+    }
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.applyLocale(newBase));
     }
 
     @Override
@@ -413,21 +420,21 @@ public class MainActivity extends Activity {
                 boolean isConnecting = (service != null && service.isDeviceConnecting());
                 if (isConnected || isConnecting) {
                     new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(isConnected ? "Disconnect Transmitter" : "Stop Connecting")
-                            .setMessage(isConnected ? "Disconnect from transmitter " + targetMac + "?"
-                                    : "Cancel connection attempt?")
-                            .setPositiveButton(isConnected ? "Disconnect" : "Stop", new DialogInterface.OnClickListener() {
+                            .setTitle(isConnected ? R.string.confirm_disconnect_title : R.string.confirm_stop_conn_title)
+                            .setMessage(isConnected ? getString(R.string.confirm_disconnect_msg, targetMac)
+                                    : getString(R.string.confirm_stop_conn_msg))
+                            .setPositiveButton(isConnected ? R.string.common_disconnect : R.string.common_stop, new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface d, int which) {
                                     disconnect();
-                                    Toast.makeText(MainActivity.this, "Transmitter disconnected", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(MainActivity.this, R.string.toast_tx_disconnected, Toast.LENGTH_SHORT).show();
                                 }
                             })
-                            .setNegativeButton("Cancel", null)
+                            .setNegativeButton(R.string.common_cancel, null)
                             .show();
                 } else {
                     checkPermissionsAndConnect();
-                    Toast.makeText(MainActivity.this, "Connecting to transmitter...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.toast_connecting_tx, Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -750,9 +757,9 @@ public class MainActivity extends Activity {
                 try (OutputStream os = getContentResolver().openOutputStream(uri)) {
                     os.write(pendingCsvExportContent.getBytes(StandardCharsets.UTF_8));
                     os.flush();
-                    Toast.makeText(this, "SiDiary CSV export successfully saved!", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.toast_csv_saved, Toast.LENGTH_LONG).show();
                 } catch (Exception e) {
-                    Toast.makeText(this, "Error saving CSV: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.toast_csv_error, e.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -909,19 +916,19 @@ public class MainActivity extends Activity {
                 boolean calReq = service.isCalRequired();
 
                 if (inWarmup) {
-                    textCalCountdown.setText("🩸 Warmup");
+                    textCalCountdown.setText(R.string.badge_cal_warmup);
                     textCalCountdown.setTextColor(Color.parseColor("#888888"));
                     return;
                 }
 
                 if (calPending) {
-                    textCalCountdown.setText("⏳ Processing");
+                    textCalCountdown.setText(R.string.badge_cal_processing);
                     textCalCountdown.setTextColor(Color.parseColor("#4FC3F7"));
                     return;
                 }
 
                 if (calReq) {
-                    textCalCountdown.setText("🩸 Cal now");
+                    textCalCountdown.setText(R.string.badge_cal_now);
                     textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
                     return;
                 }
@@ -964,7 +971,7 @@ public class MainActivity extends Activity {
                         textCalCountdown.setTextColor(Color.parseColor("#FF5252"));
                     }
                 } else {
-                    textCalCountdown.setText("🩸 Due");
+                    textCalCountdown.setText(R.string.badge_cal_due);
                     textCalCountdown.setTextColor(Color.parseColor("#FFAB00"));
                 }
             }
@@ -1042,7 +1049,7 @@ public class MainActivity extends Activity {
 
     private void showSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("⚙️ Settings & Transmitter");
+        builder.setTitle(R.string.settings_title);
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -1058,7 +1065,7 @@ public class MainActivity extends Activity {
         boolean inWarmup = isInWarmup || (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isInWarmup());
 
         Button btnCalibrateInSettings = new Button(this);
-        btnCalibrateInSettings.setText("🩸 Calibrate (Early)");
+        btnCalibrateInSettings.setText(R.string.settings_calibrate_early);
         btnCalibrateInSettings.setTextColor(inWarmup ? Color.parseColor("#777777") : Color.WHITE);
         styleSettingsButton(btnCalibrateInSettings, Color.parseColor(inWarmup ? "#222222" : "#2A2A2A"), false);
         btnCalibrateInSettings.setEnabled(!inWarmup);
@@ -1071,7 +1078,7 @@ public class MainActivity extends Activity {
         TextView lblMac = new TextView(this);
         final boolean isConn = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnected());
         final boolean isConnecting = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
-        lblMac.setText(isConn ? "Transmitter MAC Address (Connected):" : (isConnecting ? "Transmitter MAC Address (Connecting...):" : "Transmitter MAC Address (Disconnected):"));
+        lblMac.setText(isConn ? R.string.settings_mac_connected : (isConnecting ? R.string.settings_mac_connecting : R.string.settings_mac_disconnected));
         lblMac.setTextColor(isConn ? Color.parseColor("#81C784") : (isConnecting ? Color.parseColor("#FFD54F") : Color.WHITE));
         lblMac.setTextSize(13);
         LinearLayout.LayoutParams macLp = new LinearLayout.LayoutParams(
@@ -1093,7 +1100,7 @@ public class MainActivity extends Activity {
         layout.addView(editMacInput);
 
         final Button btnScanBle = new Button(this);
-        btnScanBle.setText("🔍 Scan for Transmitter (BLE)");
+        btnScanBle.setText(R.string.settings_scan_ble);
         styleSettingsButton(btnScanBle, Color.parseColor("#2A2A2A"), false);
         btnScanBle.setTextColor(Color.WHITE);
         btnScanBle.setEnabled(!isConn && !isConnecting);
@@ -1106,13 +1113,13 @@ public class MainActivity extends Activity {
 
         final Button btnConnAction = new Button(this);
         if (isConn) {
-            btnConnAction.setText("Disconnect Transmitter");
+            btnConnAction.setText(R.string.settings_disconnect_tx);
             styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
         } else if (isConnecting) {
-            btnConnAction.setText("🛑 Stop Connecting");
+            btnConnAction.setText(R.string.settings_stop_connecting);
             styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
         } else {
-            btnConnAction.setText("Connect to Transmitter");
+            btnConnAction.setText(R.string.settings_connect_tx);
             styleSettingsButton(btnConnAction, Color.parseColor("#1E3A5F"), false);
         }
         btnConnAction.setTextColor(Color.WHITE);
@@ -1134,7 +1141,7 @@ public class MainActivity extends Activity {
 
         final Button btnUnit = new Button(this);
         boolean useMgDlCurrent = sp.getBoolean(KEY_USE_MGDL, false);
-        btnUnit.setText(useMgDlCurrent ? "📏 Unit: mg/dL" : "📏 Unit: mmol/L");
+        btnUnit.setText(useMgDlCurrent ? R.string.settings_unit_mgdl : R.string.settings_unit_mmol);
         styleSettingsButton(btnUnit, Color.parseColor("#2A2A2A"), false);
         btnUnit.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams unitLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
@@ -1146,7 +1153,7 @@ public class MainActivity extends Activity {
                 boolean nextVal = !sp.getBoolean(KEY_USE_MGDL, false);
                 sp.edit().putBoolean(KEY_USE_MGDL, nextVal).apply();
                 useMgDl = nextVal;
-                btnUnit.setText(nextVal ? "📏 Unit: mg/dL" : "📏 Unit: mmol/L");
+                btnUnit.setText(nextVal ? R.string.settings_unit_mgdl : R.string.settings_unit_mmol);
                 glucoseChart.setUseMgDl(nextVal);
                 updateGlucoseDisplayUnits();
                 GlucoseWidgetProvider.updateAllWidgets(MainActivity.this);
@@ -1159,7 +1166,7 @@ public class MainActivity extends Activity {
         rowUnitSnooze.addView(btnUnit);
 
         Button btnSnooze = new Button(this);
-        btnSnooze.setText("🔕 Snooze 30m");
+        btnSnooze.setText(R.string.settings_snooze_30m);
         styleSettingsButton(btnSnooze, Color.parseColor("#2A2A2A"), false);
         btnSnooze.setTextColor(Color.parseColor("#FFD54F"));
         LinearLayout.LayoutParams snoozeLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
@@ -1175,7 +1182,7 @@ public class MainActivity extends Activity {
                     long snoozeUntil = System.currentTimeMillis() + 30 * 60_000L;
                     sp.edit().putLong(KEY_SNOOZE_UNTIL_MS, snoozeUntil).apply();
                 }
-                Toast.makeText(MainActivity.this, "Alarms snoozed for 30 minutes", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.settings_snooze_toast, Toast.LENGTH_SHORT).show();
             }
         });
         rowUnitSnooze.addView(btnSnooze);
@@ -1183,7 +1190,7 @@ public class MainActivity extends Activity {
 
         // Row 3: [💾 Export SiDiary CSV]
         Button btnExportCsv = new Button(this);
-        btnExportCsv.setText("💾 Export SiDiary CSV");
+        btnExportCsv.setText(R.string.settings_export_csv);
         styleSettingsButton(btnExportCsv, Color.parseColor("#2A2A2A"), false);
         btnExportCsv.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams exportCsvLp = new LinearLayout.LayoutParams(
@@ -1191,6 +1198,17 @@ public class MainActivity extends Activity {
         exportCsvLp.topMargin = dpToPx(8);
         btnExportCsv.setLayoutParams(exportCsvLp);
         layout.addView(btnExportCsv);
+
+        // Row 3b: [🌐 Language]
+        Button btnLanguage = new Button(this);
+        btnLanguage.setText(getString(R.string.lang_button_label, getCurrentLanguageLabel()));
+        styleSettingsButton(btnLanguage, Color.parseColor("#2A2A2A"), false);
+        btnLanguage.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams langLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        langLp.topMargin = dpToPx(8);
+        btnLanguage.setLayoutParams(langLp);
+        layout.addView(btnLanguage);
 
         // Row 4: [ℹ️ Guide & Info] & [🗑️ Clear History]
         LinearLayout rowGuideClear = new LinearLayout(this);
@@ -1201,7 +1219,7 @@ public class MainActivity extends Activity {
         rowGuideClear.setLayoutParams(rowGuideClearLp);
 
         Button btnGuide = new Button(this);
-        btnGuide.setText("ℹ️ Guide & Info");
+        btnGuide.setText(R.string.settings_guide_info);
         styleSettingsButton(btnGuide, Color.parseColor("#2A2A2A"), false);
         btnGuide.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams guideLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
@@ -1210,7 +1228,7 @@ public class MainActivity extends Activity {
         rowGuideClear.addView(btnGuide);
 
         Button btnClearChart = new Button(this);
-        btnClearChart.setText("🗑️ Clear History");
+        btnClearChart.setText(R.string.settings_clear_history);
         styleSettingsButton(btnClearChart, Color.parseColor("#2A2A2A"), true);
         btnClearChart.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams clearChartLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
@@ -1220,7 +1238,7 @@ public class MainActivity extends Activity {
         layout.addView(rowGuideClear);
 
         Button btnResetPair = new Button(this);
-        btnResetPair.setText("⚠️ Reset & Re-pair Transmitter");
+        btnResetPair.setText(R.string.settings_reset_pair);
         styleSettingsButton(btnResetPair, Color.parseColor("#3D1E1E"), true);
         btnResetPair.setTextColor(Color.parseColor("#FF8A80"));
         LinearLayout.LayoutParams resetPairLp = new LinearLayout.LayoutParams(
@@ -1234,7 +1252,7 @@ public class MainActivity extends Activity {
         chkLp.topMargin = dpToPx(4);
 
         final CheckBox chkAlarms = new CheckBox(this);
-        chkAlarms.setText("🔔 Sound Alarms (Hypo / Hyper)");
+        chkAlarms.setText(R.string.settings_chk_alarms);
         chkAlarms.setTextColor(Color.WHITE);
         chkAlarms.setChecked(sp.getBoolean(KEY_ALARMS_ENABLED, true));
         chkAlarms.setLayoutParams(chkLp);
@@ -1247,7 +1265,7 @@ public class MainActivity extends Activity {
         layout.addView(chkAlarms);
 
         final CheckBox chkCalAlarm = new CheckBox(this);
-        chkCalAlarm.setText("🩸 Sound Alert on Calibration Request");
+        chkCalAlarm.setText(R.string.settings_chk_cal_alarm);
         chkCalAlarm.setTextColor(Color.WHITE);
         chkCalAlarm.setChecked(sp.getBoolean(KEY_ALARM_CAL_ENABLED, true));
         chkCalAlarm.setLayoutParams(chkLp);
@@ -1260,7 +1278,7 @@ public class MainActivity extends Activity {
         layout.addView(chkCalAlarm);
 
         final CheckBox chkMissedAlarm = new CheckBox(this);
-        chkMissedAlarm.setText("⚠️ Alert on No Sensor Readings (> 20 min)");
+        chkMissedAlarm.setText(R.string.settings_chk_missed_alarm);
         chkMissedAlarm.setTextColor(Color.WHITE);
         chkMissedAlarm.setChecked(sp.getBoolean(KEY_ALARM_MISSED_READINGS_ENABLED, true));
         chkMissedAlarm.setLayoutParams(chkLp);
@@ -1273,7 +1291,7 @@ public class MainActivity extends Activity {
         layout.addView(chkMissedAlarm);
 
         final CheckBox chkXdrip = new CheckBox(this);
-        chkXdrip.setText("📡 Broadcast to xDrip+ / AAPS");
+        chkXdrip.setText(R.string.settings_chk_xdrip);
         chkXdrip.setTextColor(Color.WHITE);
         boolean xdripEnabled = sp.getBoolean(KEY_XDRIP_BROADCAST, false);
         chkXdrip.setChecked(xdripEnabled);
@@ -1287,7 +1305,7 @@ public class MainActivity extends Activity {
         layout.addView(chkXdrip);
 
         final CheckBox chkLogs = new CheckBox(this);
-        chkLogs.setText("📋 Show BLE Protocol Logs");
+        chkLogs.setText(R.string.settings_chk_logs);
         chkLogs.setTextColor(Color.WHITE);
         chkLogs.setChecked(showLogs);
         chkLogs.setLayoutParams(chkLp);
@@ -1297,7 +1315,7 @@ public class MainActivity extends Activity {
         scrollView.setFillViewport(true);
         scrollView.addView(layout);
         builder.setView(scrollView);
-        builder.setPositiveButton("Close", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(R.string.common_close, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (!isConn) {
@@ -1341,14 +1359,14 @@ public class MainActivity extends Activity {
                 boolean isConnectingNow = (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isDeviceConnecting());
                 if (isConnected || isConnectingNow) {
                     new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(isConnected ? "Disconnect" : "Stop Connecting")
-                            .setMessage(isConnected ? "Are you sure you want to disconnect from the transmitter? Glucose reception will be paused."
-                                    : "Cancel connection attempt?")
-                            .setPositiveButton(isConnected ? "Disconnect" : "Stop", new DialogInterface.OnClickListener() {
+                            .setTitle(isConnected ? R.string.confirm_disconnect_title : R.string.confirm_stop_conn_title)
+                            .setMessage(isConnected ? getString(R.string.confirm_disconnect_msg, targetMac)
+                                    : getString(R.string.confirm_stop_conn_msg))
+                            .setPositiveButton(isConnected ? R.string.common_disconnect : R.string.common_stop, new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface d, int which) {
                                     disconnect();
-                                    btnConnAction.setText("Connect to Transmitter");
+                                    btnConnAction.setText(R.string.settings_connect_tx);
                                     styleSettingsButton(btnConnAction, Color.parseColor("#1E3A5F"), false);
                                     editMacInput.setEnabled(true);
                                     editMacInput.setTextColor(Color.WHITE);
@@ -1357,11 +1375,11 @@ public class MainActivity extends Activity {
                                     btnScanBle.setEnabled(true);
                                 }
                             })
-                            .setNegativeButton("Cancel", null)
+                            .setNegativeButton(R.string.common_cancel, null)
                             .show();
                 } else {
                     checkPermissionsAndConnect();
-                    btnConnAction.setText("🛑 Stop Connecting");
+                    btnConnAction.setText(R.string.settings_stop_connecting);
                     styleSettingsButton(btnConnAction, Color.parseColor("#3D1E1E"), false);
                     editMacInput.setEnabled(false);
                     editMacInput.setTextColor(Color.GRAY);
@@ -1377,19 +1395,24 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("⚠️ Confirm Re-pairing")
-                        .setMessage("WARNING: This will reset the cryptographic pairing and generate a new AppKey.\n\n"
-                                + "IMPORTANT: The Guardian Connect transmitter MUST be placed in its charger for at least 10 seconds (until green flash) and then removed before re-pairing.\n\n"
-                                + "Are you sure you want to re-pair?")
-                        .setPositiveButton("Yes, Reset Key", new DialogInterface.OnClickListener() {
+                        .setTitle(R.string.confirm_reset_title)
+                        .setMessage(R.string.confirm_reset_msg)
+                        .setPositiveButton(R.string.confirm_reset_yes, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface d, int which) {
                                 dialog.dismiss();
                                 rePairTransmitter();
                             }
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.common_cancel, null)
                         .show();
+            }
+        });
+
+        btnLanguage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showLanguageSelectorDialog(dialog);
             }
         });
 
@@ -1415,12 +1438,12 @@ public class MainActivity extends Activity {
                         shareIntent.setType("text/plain");
                         shareIntent.putExtra(Intent.EXTRA_SUBJECT, localCopy.getName());
                         shareIntent.putExtra(Intent.EXTRA_TEXT, pendingCsvExportContent);
-                        startActivity(Intent.createChooser(shareIntent, "Share SiDiary Export"));
-                        Toast.makeText(MainActivity.this, "Saved: " + localCopy.getName(), Toast.LENGTH_LONG).show();
+                        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_csv_title)));
+                        Toast.makeText(MainActivity.this, getString(R.string.toast_saved_file, localCopy.getName()), Toast.LENGTH_LONG).show();
                     }
                 } catch (Exception ex) {
                     Log.e(TAG, "CSV export error", ex);
-                    Toast.makeText(MainActivity.this, "Export error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, getString(R.string.toast_export_error, ex.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -1429,17 +1452,17 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Clear Chart History")
-                        .setMessage("Delete all glucose history points from the chart and local database?")
-                        .setPositiveButton("Clear", new DialogInterface.OnClickListener() {
+                        .setTitle(R.string.confirm_clear_title)
+                        .setMessage(R.string.confirm_clear_msg)
+                        .setPositiveButton(R.string.confirm_clear_yes, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface d, int which) {
                                 glucoseChart.clear();
                                 GlucoseHistoryStorage.getInstance(MainActivity.this).clear();
-                                Toast.makeText(MainActivity.this, "Chart and history cleared", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, R.string.toast_history_cleared, Toast.LENGTH_SHORT).show();
                             }
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.common_cancel, null)
                         .show();
             }
         });
@@ -1454,6 +1477,46 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    private String getCurrentLanguageLabel() {
+        String code = LocaleHelper.getSavedLanguage(this);
+        if ("en".equals(code)) return getString(R.string.lang_en);
+        if ("ru".equals(code)) return getString(R.string.lang_ru);
+        return getString(R.string.lang_system);
+    }
+
+    private void showLanguageSelectorDialog(final AlertDialog settingsDialog) {
+        final String[] codes = LocaleHelper.SUPPORTED_LANG_CODES;
+        final String[] labels = new String[] {
+                getString(R.string.lang_system),
+                getString(R.string.lang_en),
+                getString(R.string.lang_ru)
+        };
+        String current = LocaleHelper.getSavedLanguage(this);
+        int checked = 0;
+        for (int i = 0; i < codes.length; i++) {
+            if (codes[i].equals(current)) {
+                checked = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.lang_dialog_title)
+                .setSingleChoiceItems(labels, checked, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        LocaleHelper.setSavedLanguage(MainActivity.this, codes[which]);
+                        d.dismiss();
+                        if (settingsDialog != null && settingsDialog.isShowing()) {
+                            settingsDialog.dismiss();
+                        }
+                        GlucoseWidgetProvider.updateAllWidgets(MainActivity.this);
+                        recreate();
+                    }
+                })
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+    }
+
     private void showGuideAndDisclaimerDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.guide_title);
@@ -1466,24 +1529,7 @@ public class MainActivity extends Activity {
         textContent.setTextColor(Color.parseColor("#E0E0E0"));
         textContent.setTextSize(13.5f);
         textContent.setLineSpacing(dpToPx(3), 1.15f);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("📖 About MMT7821-Client\n");
-        sb.append("MMT7821-Client is an independent, open-source DIY Android client for the Medtronic Guardian Connect (MMT-7821) transmitter and Enlite / Guardian Sensor 3 electrodes. It operates 100% offline without CareLink servers or device whitelisting.\n\n");
-
-        sb.append("🚀 Quick Start & Pairing Guide\n");
-        sb.append("1. Charger Reset: Disconnect the transmitter from the sensor and place it on the charger for at least 10 seconds until the green LED flashes, then remove it.\n");
-        sb.append("2. Pairing: Open Settings, tap 'Scan for Transmitter (BLE)' or enter the MAC address, and tap 'Connect'. Wait ~10–15 seconds for cryptographic pairing to complete.\n");
-        sb.append("3. Sensor Start & Warm-up: Attach the transmitter to the sensor on your body. The 2-hour hardware warm-up will start automatically.\n");
-        sb.append("4. Calibration: Once warm-up finishes ('Waiting for Calibration'), enter a fingerstick blood glucose reading from your meter. Calibrate every 6–12 hours when glucose is stable.\n\n");
-
-        sb.append("⏳ Sensor Lifespan & Restart\n");
-        sb.append("Guardian Connect MMT-7821 enforces the 6-day sensor lifespan in transmitter hardware. To restart a sensor session, physically detach the transmitter from the sensor, place it on the charger for 15–20 minutes to reset the internal session timer, and reattach it to begin a new 2-hour warm-up.\n\n");
-
-        sb.append("⚠️ Medical & Legal Disclaimer (IMPORTANT)\n");
-        sb.append("FOR RESEARCH AND EDUCATIONAL (DIY) PURPOSES ONLY. MMT7821-Client is NOT an approved medical device and has not been evaluated by the FDA or any regulatory authority. Software or Bluetooth failures may occur. NEVER make insulin dosing or treatment decisions based solely on this app—always confirm with a certified blood glucose meter. By using this software, you assume full responsibility and all associated risks.");
-
-        textContent.setText(sb.toString());
+        textContent.setText(R.string.guide_body);
         scrollView.addView(textContent);
 
         builder.setView(scrollView);
@@ -1511,17 +1557,17 @@ public class MainActivity extends Activity {
 
     private void startBleScanner(final EditText editMacInput, final Button btnScan) {
         if (!checkPermissions()) {
-            Toast.makeText(this, "Please grant Bluetooth/Location permissions first", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_grant_bt_first, Toast.LENGTH_SHORT).show();
             return;
         }
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-            Toast.makeText(this, "Bluetooth is disabled!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_bt_disabled, Toast.LENGTH_SHORT).show();
             return;
         }
 
         final BluetoothLeScanner scanner = bluetoothAdapter.getBluetoothLeScanner();
         if (scanner == null) {
-            Toast.makeText(this, "BLE scanner is not available on this device", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_ble_no_scanner, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1672,16 +1718,16 @@ public class MainActivity extends Activity {
         boolean inWarmup = isInWarmup || (GuardianBleService.getInstance() != null && GuardianBleService.getInstance().isInWarmup());
         if (inWarmup) {
             new AlertDialog.Builder(this)
-                    .setTitle("Calibration Unavailable")
-                    .setMessage("Enlite sensor warm-up is in progress (~2 hours).\n\nBlood glucose calibration cannot be entered until the warm-up completes.")
-                    .setPositiveButton("OK", null)
+                    .setTitle(R.string.cal_unavail_title)
+                    .setMessage(R.string.cal_unavail_msg)
+                    .setPositiveButton(R.string.common_ok, null)
                     .show();
             return;
         }
 
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint(useMgDl ? "e.g. 100" : "e.g. 5.6");
+        input.setHint(useMgDl ? R.string.cal_hint_mgdl : R.string.cal_hint_mmol);
         input.setTextColor(Color.WHITE);
         input.setHintTextColor(Color.GRAY);
         input.setBackgroundColor(Color.parseColor("#282828"));
@@ -1690,16 +1736,16 @@ public class MainActivity extends Activity {
 
         String unitStr = useMgDl ? "mg/dL" : "mmol/L";
         new AlertDialog.Builder(this)
-                .setTitle("Enlite Sensor Calibration")
-                .setMessage("Enter current blood glucose from your meter (" + unitStr + ").\n\nIt is recommended to calibrate during stable glucose every 6–12 hours.")
+                .setTitle(R.string.cal_dialog_title)
+                .setMessage(getString(R.string.cal_dialog_msg, unitStr))
                 .setView(input)
-                .setPositiveButton("Calibrate", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.cal_dialog_btn, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         performCalibration(input.getText().toString().trim().replace(',', '.'));
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.common_cancel, null)
                 .show();
     }
 
@@ -1788,7 +1834,7 @@ public class MainActivity extends Activity {
                         performLogBg(input.getText().toString().trim().replace(',', '.'));
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.common_cancel, null)
                 .show();
     }
 
@@ -1889,7 +1935,7 @@ public class MainActivity extends Activity {
         presetsLp.bottomMargin = dpToPx(12);
         rowPresets.setLayoutParams(presetsLp);
 
-        String[] presetLabels = new String[]{"Now", "-15m", "-30m", "+15m"};
+        String[] presetLabels = new String[]{getString(R.string.therapy_now), "-15m", "-30m", "+15m"};
         final int[] presetMinutes = new int[]{0, -15, -30, 15};
 
         for (int i = 0; i < presetLabels.length; i++) {
@@ -1920,14 +1966,14 @@ public class MainActivity extends Activity {
 
         // Insulin Input
         TextView lblBolus = new TextView(this);
-        lblBolus.setText("💉 Insulin Bolus (Units):");
+        lblBolus.setText(R.string.therapy_lbl_bolus);
         lblBolus.setTextColor(Color.parseColor("#00E5FF"));
         lblBolus.setTextSize(13);
         layout.addView(lblBolus);
 
         final EditText editBolus = new EditText(this);
         editBolus.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        editBolus.setHint("e.g. 4.5");
+        editBolus.setHint(R.string.therapy_hint_bolus);
         editBolus.setHintTextColor(Color.GRAY);
         editBolus.setTextColor(Color.WHITE);
         editBolus.setBackgroundColor(Color.parseColor("#282828"));
@@ -1974,14 +2020,14 @@ public class MainActivity extends Activity {
 
         // Carbs Input
         TextView lblCarbs = new TextView(this);
-        lblCarbs.setText("🍞 Carbohydrates (Grams):");
+        lblCarbs.setText(R.string.therapy_lbl_carbs);
         lblCarbs.setTextColor(Color.parseColor("#FFAB40"));
         lblCarbs.setTextSize(13);
         layout.addView(lblCarbs);
 
         final EditText editCarbs = new EditText(this);
         editCarbs.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        editCarbs.setHint("e.g. 50");
+        editCarbs.setHint(R.string.therapy_hint_carbs);
         editCarbs.setHintTextColor(Color.GRAY);
         editCarbs.setTextColor(Color.WHITE);
         editCarbs.setBackgroundColor(Color.parseColor("#282828"));
@@ -2029,14 +2075,14 @@ public class MainActivity extends Activity {
         // Blood Glucose (Meter) Input
         TextView lblBg = new TextView(this);
         String unitStr = useMgDl ? "mg/dL" : "mmol/L";
-        lblBg.setText("🩸 Blood Glucose (Meter, " + unitStr + ", Optional):");
+        lblBg.setText(getString(R.string.therapy_lbl_bg, unitStr));
         lblBg.setTextColor(Color.parseColor("#FF8A80"));
         lblBg.setTextSize(13);
         layout.addView(lblBg);
 
         final EditText editBg = new EditText(this);
         editBg.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        editBg.setHint(useMgDl ? "e.g. 100" : "e.g. 5.6");
+        editBg.setHint(useMgDl ? R.string.cal_hint_mgdl : R.string.cal_hint_mmol);
         editBg.setHintTextColor(Color.GRAY);
         editBg.setTextColor(Color.WHITE);
         editBg.setBackgroundColor(Color.parseColor("#282828"));
@@ -2050,14 +2096,14 @@ public class MainActivity extends Activity {
 
         // Note Input
         TextView lblNote = new TextView(this);
-        lblNote.setText("📝 Note / Meal (Optional):");
+        lblNote.setText(R.string.therapy_lbl_note);
         lblNote.setTextColor(Color.parseColor("#BBBBBB"));
         lblNote.setTextSize(13);
         layout.addView(lblNote);
 
         final EditText editNote = new EditText(this);
         editNote.setInputType(InputType.TYPE_CLASS_TEXT);
-        editNote.setHint("e.g. Lunch, Snack, Correction");
+        editNote.setHint(R.string.therapy_note_hint);
         editNote.setHintTextColor(Color.GRAY);
         editNote.setTextColor(Color.WHITE);
         editNote.setBackgroundColor(Color.parseColor("#282828"));
@@ -2077,7 +2123,11 @@ public class MainActivity extends Activity {
         notePresetsLp.bottomMargin = dpToPx(6);
         rowNotePresets.setLayoutParams(notePresetsLp);
 
-        String[] notePresets = new String[]{"Lunch", "Snack", "Correction"};
+        String[] notePresets = new String[]{
+                getString(R.string.therapy_preset_lunch),
+                getString(R.string.therapy_preset_snack),
+                getString(R.string.therapy_preset_correction)
+        };
         for (int i = 0; i < notePresets.length; i++) {
             final String presetText = notePresets[i];
             Button btn = new Button(this);
@@ -2100,9 +2150,9 @@ public class MainActivity extends Activity {
         layout.addView(rowNotePresets);
 
         new AlertDialog.Builder(this)
-                .setTitle("Log Therapy & BG")
+                .setTitle(R.string.therapy_dialog_title)
                 .setView(layout)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.common_save, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         String bgStr = editBg.getText().toString().trim().replace(',', '.');
@@ -2198,7 +2248,7 @@ public class MainActivity extends Activity {
                         Toast.makeText(MainActivity.this, sb.toString().trim(), Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.common_cancel, null)
                 .show();
     }
 
@@ -2307,9 +2357,9 @@ public class MainActivity extends Activity {
                     timeStr, point.glucoseMmol, mgDl);
 
             new AlertDialog.Builder(this)
-                    .setTitle("Sensor Calibration")
+                    .setTitle(R.string.sensor_cal_title)
                     .setMessage(info)
-                    .setPositiveButton("OK", null)
+                    .setPositiveButton(R.string.common_ok, null)
                     .show();
             return;
         }
@@ -2319,10 +2369,10 @@ public class MainActivity extends Activity {
                     timeStr, point.glucoseMmol, mgDl);
 
             AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle("Manual Blood Glucose")
+                    .setTitle(R.string.manual_bg_title)
                     .setMessage(info)
-                    .setNegativeButton("Close", null)
-                    .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    .setNegativeButton(R.string.common_close, null)
+                    .setPositiveButton(R.string.common_delete, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface d, int which) {
                             GlucoseHistoryStorage storage = GlucoseHistoryStorage.getInstance(MainActivity.this);
@@ -2331,9 +2381,9 @@ public class MainActivity extends Activity {
                                 loadChartPoints();
                                 String logMsg = "Deleted manual BG reading (" + point.glucoseMmol + " mmol/L) at " + timeFmt.format(new Date(point.timestamp));
                                 appendLog(logMsg);
-                                Toast.makeText(MainActivity.this, "Manual BG reading deleted", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, R.string.toast_bg_deleted, Toast.LENGTH_SHORT).show();
                             } else {
-                                Toast.makeText(MainActivity.this, "Could not delete point", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, R.string.toast_delete_failed, Toast.LENGTH_SHORT).show();
                             }
                         }
                     })
@@ -2471,13 +2521,13 @@ public class MainActivity extends Activity {
             return;
         }
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-            Toast.makeText(this, "Bluetooth is disabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_bt_disabled, Toast.LENGTH_SHORT).show();
             return;
         }
 
         String mac = (targetMac != null) ? targetMac.trim().toUpperCase(Locale.US) : "";
         if (mac.isEmpty() || !BluetoothAdapter.checkBluetoothAddress(mac)) {
-            Toast.makeText(this, "Please enter transmitter MAC or scan in Settings", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.toast_enter_mac, Toast.LENGTH_LONG).show();
             return;
         }
 

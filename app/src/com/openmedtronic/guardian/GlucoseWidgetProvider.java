@@ -45,6 +45,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
     }
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        context = LocaleHelper.applyLocale(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose);
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 

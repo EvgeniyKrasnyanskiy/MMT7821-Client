@@ -32,6 +32,16 @@
     <string name="cal_processing">Processing Calibration...</string>
     <string name="cal_processing_desc">Processing Calibration (5–15 min)...</string>
     <string name="cal_waiting_accept">⏳ Waiting for calibration acceptance...</string>
+    <string name="warmup_countdown_hms">⏳ Warm-up: %1$02d:%2$02d:%3$02d</string>
+    <string name="warmup_countdown_ms">⏳ Warm-up: %1$02d:%2$02d</string>
+    <string name="warmup_stabilizing">⏳ Warm-up stabilizing...</string>
+    <string name="next_reading_in">Next reading: %1$02d:%2$02d</string>
+    <string name="next_reading_none">Next reading: --:--</string>
+    <string name="reading_in_progress">Reading in progress...</string>
+    <string name="badge_cal_warmup">🩸 Warmup</string>
+    <string name="badge_cal_processing">⏳ Processing</string>
+    <string name="badge_cal_now">🩸 Cal now</string>
+    <string name="badge_cal_due">🩸 Due</string>
 
     <!-- Widget -->
     <string name="widget_disconnected">⚠️ Disconnected (%s)</string>
@@ -61,4 +71,139 @@
     <!-- Guide & Disclaimer Dialog -->
     <string name="guide_title">ℹ️ Guide &amp; Disclaimer</string>
     <string name="guide_close">Close</string>
+    <string name="guide_body">📖 About MMT7821-Client\nMMT7821-Client is an independent, open-source DIY Android client for the Medtronic Guardian Connect (MMT-7821) transmitter and Enlite / Guardian Sensor 3 electrodes. It operates 100%% offline without CareLink servers or device whitelisting.\n\n🚀 Quick Start &amp; Pairing Guide\n1. Charger Reset: Disconnect the transmitter from the sensor and place it on the charger for at least 10 seconds until the green LED flashes, then remove it.\n2. Pairing: Open Settings, tap \'Scan for Transmitter (BLE)\' or enter the MAC address, and tap \'Connect\'. Wait ~10–15 seconds for cryptographic pairing to complete.\n3. Sensor Start &amp; Warm-up: Attach the transmitter to the sensor on your body. The 2-hour hardware warm-up will start automatically.\n4. Calibration: Once warm-up finishes (\'Waiting for Calibration\'), enter a fingerstick blood glucose reading from your meter. Calibrate every 6–12 hours when glucose is stable.\n\n⏳ Sensor Lifespan &amp; Restart\nGuardian Connect MMT-7821 enforces the 6-day sensor lifespan in transmitter hardware. To restart a sensor session, physically detach the transmitter from the sensor, place it on the charger for 15–20 minutes to reset the internal session timer, and reattach it to begin a new 2-hour warm-up.\n\n⚠️ Medical &amp; Legal Disclaimer (IMPORTANT)\nFOR RESEARCH AND EDUCATIONAL (DIY) PURPOSES ONLY. MMT7821-Client is NOT an approved medical device and has not been evaluated by the FDA or any regulatory authority. Software or Bluetooth failures may occur. NEVER make insulin dosing or treatment decisions based solely on this app—always confirm with a certified blood glucose meter. By using this software, you assume full responsibility and all associated risks.</string>
+
+    <!-- Chart -->
+    <string name="chart_waiting_data">Waiting for sensor data (~5 min)...</string>
+    <string name="chart_now">Now</string>
+    <string name="chart_zoom_hours">%dh</string>
+
+    <!-- Language Selector -->
+    <string name="lang_button_label">🌐 Language: %s</string>
+    <string name="lang_dialog_title">Select Language</string>
+    <string name="lang_system">System Default</string>
+    <string name="lang_en">English</string>
+    <string name="lang_ru">Русский</string>
+
+    <!-- Settings Dialog -->
+    <string name="settings_title">⚙️ Settings &amp; Transmitter</string>
+    <string name="settings_calibrate_early">🩸 Calibrate (Early)</string>
+    <string name="settings_mac_connected">Transmitter MAC Address (Connected):</string>
+    <string name="settings_mac_connecting">Transmitter MAC Address (Connecting...):</string>
+    <string name="settings_mac_disconnected">Transmitter MAC Address (Disconnected):</string>
+    <string name="settings_scan_ble">🔍 Scan for Transmitter (BLE)</string>
+    <string name="settings_disconnect_tx">Disconnect Transmitter</string>
+    <string name="settings_stop_connecting">🛑 Stop Connecting</string>
+    <string name="settings_connect_tx">Connect to Transmitter</string>
+    <string name="settings_unit_mgdl">📏 Unit: mg/dL</string>
+    <string name="settings_unit_mmol">📏 Unit: mmol/L</string>
+    <string name="settings_snooze_30m">🔕 Snooze 30m</string>
+    <string name="settings_snooze_toast">Alarms snoozed for 30 minutes</string>
+    <string name="settings_export_csv">💾 Export SiDiary CSV</string>
+    <string name="settings_guide_info">ℹ️ Guide &amp; Info</string>
+    <string name="settings_clear_history">🗑️ Clear History</string>
+    <string name="settings_reset_pair">⚠️ Reset &amp; Re-pair Transmitter</string>
+    <string name="settings_chk_alarms">🔔 Sound Alarms (Hypo / Hyper)</string>
+    <string name="settings_chk_cal_alarm">🩸 Sound Alert on Calibration Request</string>
+    <string name="settings_chk_missed_alarm">⚠️ Alert on No Sensor Readings (&gt; 20 min)</string>
+    <string name="settings_chk_xdrip">📡 Broadcast to xDrip+ / AAPS</string>
+    <string name="settings_chk_logs">📋 Show BLE Protocol Logs</string>
+
+    <!-- Common Actions & Dialogs -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_close">Close</string>
+    <string name="common_stop">Stop</string>
+    <string name="common_disconnect">Disconnect</string>
+    <string name="confirm_disconnect_title">Disconnect Transmitter</string>
+    <string name="confirm_stop_conn_title">Stop Connecting</string>
+    <string name="confirm_disconnect_msg">Disconnect from transmitter %s?</string>
+    <string name="confirm_stop_conn_msg">Cancel connection attempt?</string>
+    <string name="toast_tx_disconnected">Transmitter disconnected</string>
+    <string name="toast_connecting_tx">Connecting to transmitter...</string>
+    <string name="confirm_reset_title">⚠️ Reset &amp; Re-pair Transmitter</string>
+    <string name="confirm_reset_msg">WARNING: This will reset the cryptographic pairing and generate a new AppKey.\n\nIMPORTANT: The Guardian Connect transmitter MUST be placed in its charger for 10 seconds and removed (green LED blinking) before re-pairing!\n\nAre you sure you want to re-pair?</string>
+    <string name="confirm_reset_yes">Yes, Reset Key</string>
+    <string name="confirm_clear_title">Clear Chart History</string>
+    <string name="confirm_clear_msg">Delete all glucose history points from the chart and local database?</string>
+    <string name="confirm_clear_yes">Clear</string>
+    <string name="toast_history_cleared">Chart and history cleared</string>
+    <string name="toast_csv_saved">SiDiary CSV export successfully saved!</string>
+    <string name="toast_csv_error">Error saving CSV: %s</string>
+    <string name="toast_export_error">Export error: %s</string>
+    <string name="toast_saved_file">Saved: %s</string>
+    <string name="share_csv_title">Share SiDiary Export</string>
+
+    <!-- BLE Scanner & Connection -->
+    <string name="toast_grant_bt_first">Please grant Bluetooth/Location permissions first</string>
+    <string name="toast_bt_disabled">Bluetooth is disabled</string>
+    <string name="toast_ble_no_scanner">BLE scanner is not available on this device</string>
+    <string name="toast_scanning_ble">Scanning for nearby Medtronic transmitters...</string>
+    <string name="toast_tx_found">Transmitter found: %s</string>
+    <string name="toast_scan_error">BLE scan error: %d</string>
+    <string name="toast_enter_mac">Please enter transmitter MAC or scan in Settings</string>
+
+    <!-- Calibration & Therapy Dialogs -->
+    <string name="cal_unavail_title">Calibration Unavailable</string>
+    <string name="cal_unavail_msg">Enlite sensor warm-up is in progress (~2 hours).\n\nBlood glucose calibration can only be entered after warm-up finishes.</string>
+    <string name="cal_dialog_title">Enlite Sensor Calibration</string>
+    <string name="cal_dialog_msg">Enter current blood glucose from your meter (%s).\n\nIt is recommended to calibrate when glucose is stable.</string>
+    <string name="cal_dialog_btn">Calibrate</string>
+    <string name="cal_hint_mgdl">e.g. 100</string>
+    <string name="cal_hint_mmol">e.g. 5.6</string>
+    <string name="toast_cal_warmup">Calibration unavailable: warm-up in progress</string>
+    <string name="toast_value_empty">Value not entered</string>
+    <string name="therapy_dialog_title">Log Therapy &amp; BG</string>
+    <string name="therapy_now">Now</string>
+    <string name="therapy_lbl_bolus">💉 Insulin Bolus (Units):</string>
+    <string name="therapy_hint_bolus">e.g. 4.5</string>
+    <string name="therapy_lbl_carbs">🍞 Carbohydrates (Grams):</string>
+    <string name="therapy_hint_carbs">e.g. 50</string>
+    <string name="therapy_lbl_bg">🩸 Blood Glucose (Meter, %s, Optional):</string>
+    <string name="therapy_lbl_note">📝 Note / Meal (Optional):</string>
+    <string name="therapy_note_hint">e.g. Lunch, Snack, Correction</string>
+    <string name="therapy_preset_lunch">Lunch</string>
+    <string name="therapy_preset_snack">Snack</string>
+    <string name="therapy_preset_correction">Correction</string>
+    <string name="therapy_details_title">Therapy Details</string>
+    <string name="toast_therapy_deleted">Therapy record deleted</string>
+    <string name="sensor_cal_title">Sensor Calibration</string>
+    <string name="manual_bg_title">Manual Blood Glucose</string>
+    <string name="toast_bg_deleted">Manual BG reading deleted</string>
+    <string name="toast_delete_failed">Could not delete point</string>
+    <string name="toast_invalid_bg">Invalid BG value</string>
+    <string name="toast_invalid_insulin">Invalid insulin value</string>
+    <string name="toast_invalid_carbs">Invalid carbs value</string>
+    <string name="toast_enter_something">Enter BG, insulin, carbohydrates or note</string>
+    <string name="toast_insulin_max">Insulin bolus too high (max 100U)</string>
+    <string name="toast_carbs_max">Carbohydrates too high (max 500g)</string>
+    <string name="waiting_sensor_reading">Waiting for sensor reading...</string>
+    <string name="connected_to_tx">Connected to transmitter</string>
+    <string name="badge_sensor_expired">⏳ Expired</string>
+    <string name="cal_summary_none">Calibration: not calibrated yet</string>
+    <string name="cal_summary_last">Last calibration: %1$s (%2$s)</string>
+    <string name="status_updated_at">Updated at %s</string>
+
+    <!-- BLE Service Statuses -->
+    <string name="svc_mac_not_set">MAC address not configured</string>
+    <string name="svc_bt_disabled">Bluetooth is disabled</string>
+    <string name="svc_grant_bt">Grant Bluetooth permission in app</string>
+    <string name="svc_connecting_to">Connecting to %s...</string>
+    <string name="svc_cal_sent">⏳ Calibration sent, processing...</string>
+    <string name="svc_sending_config">Sending sensor configuration (Opcode 0x05)...</string>
+    <string name="svc_connected_mtu">Connected. Requesting MTU...</string>
+    <string name="svc_subscribing">Subscribing to indications...</string>
+    <string name="svc_indications_ready">Indications ready. Starting comms...</string>
+    <string name="svc_stabilizing_retry">Transmitter stabilizing... Retry %d/3</string>
+    <string name="svc_error_134">Error 134: Remove transmitter from sensor and reset in charger!</string>
+    <string name="svc_time_sync_sent">Time sync request sent...</string>
+    <string name="svc_monitoring_active">Monitoring active. Waiting for reading (~5 min)...</string>
+    <string name="svc_preparing_pairing">Preparing pairing...</string>
+    <string name="svc_syncing_time">Syncing time...</string>
+    <string name="svc_pairing_ok">Pairing successful! Syncing time...</string>
+    <string name="svc_resending_key">Resending pairing key...</string>
+    <string name="svc_charger_reset_req">Transmitter reset via charger required</string>
+    <string name="svc_cmd_accepted">Command accepted by transmitter!</string>
 </resources>
