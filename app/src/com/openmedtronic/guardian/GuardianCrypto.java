@@ -86,13 +86,13 @@ public final class GuardianCrypto {
 
     /**
      * Computes HMAC-SHA256 challenge response for pairing/session handshake.
-     * Key is ALWAYS the APP_KEY (never MASTER_KEY).
-     * HMAC = HMAC-SHA256(appKey, step1Packet || nonce_16bytes)
+     * Opcode 0x00 pairing uses MASTER_KEY; session operations use APP_KEY.
+     * HMAC = HMAC-SHA256(hmacKey, step1Packet || nonce_16bytes)
      */
-    public static byte[] computeChallengeResponse(byte[] appKey, byte[] step1Packet, byte[] nonce) {
+    public static byte[] computeChallengeResponse(byte[] hmacKey, byte[] step1Packet, byte[] nonce) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(appKey, "HmacSHA256"));
+            mac.init(new SecretKeySpec(hmacKey, "HmacSHA256"));
             mac.update(step1Packet);
             mac.update(nonce);
             byte[] hmac = mac.doFinal();

@@ -101,6 +101,7 @@ public class GuardianBleService extends Service {
     private static final String KEY_IS_IN_WARMUP = "is_in_warmup";
     private static final String KEY_IS_CAL_REQUIRED = "is_cal_required";
     private static final String KEY_WARMUP_START_TIME = "warmup_start_time";
+    private static final String KEY_IS_SENSOR_ATTACHED = "is_sensor_attached";
     private static final String KEY_DEVICE_NAME = "device_name";
     private static final String KEY_XDRIP_BROADCAST = "xdrip_broadcast";
     private static final String KEY_USER_DISCONNECTED = "user_disconnected";
@@ -154,6 +155,7 @@ public class GuardianBleService extends Service {
         void onHandshakeStateChanged(HandshakeState state);
         void onSensorDaysUpdated(int daysRemaining);
         void onCalibrationStatusChanged(boolean pending, boolean required, String statusMsg);
+        void onSensorConnectedChanged(boolean attached);
     }
 
     private static volatile GuardianBleService sInstance;
@@ -198,8 +200,10 @@ public class GuardianBleService extends Service {
     private boolean isInWarmup = false;
     private boolean isCalRequired = false;
     private boolean isCalPending = false;
+    private boolean isSensorAttached = false;
     private long warmupStartTimeMs = 0;
     private boolean isGattConnected = false;
+    private String lastStatusText = "";
 
     // Alarm ringtone control & background logs
     private Ringtone activeRingtone;
@@ -265,7 +269,7 @@ public class GuardianBleService extends Service {
         mainHandler.postDelayed(notificationUpdateRunnable, 60_000L);
         mainHandler.postDelayed(watchdogRunnable, 10_000L);
 
-        if (isPaired && !userInitiatedDisconnect) {
+        if (targetMac != null && BluetoothAdapter.checkBluetoothAddress(targetMac) && !userInitiatedDisconnect) {
             mainHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -333,8 +337,12 @@ public class GuardianBleService extends Service {
             stopAlarmSound();
             boolean isConn = isDeviceConnected();
             listener.onConnectionStateChanged(isConn);
+            if (isConn && lastStatusText != null && !lastStatusText.isEmpty()) {
+                listener.onStatusUpdated(lastStatusText);
+            }
             listener.onBatteryReceived(isConn ? batteryLevelPercent : -1);
             listener.onHandshakeStateChanged(handshakeState);
+            listener.onSensorConnectedChanged(isSensorAttached);
             if (isConn) {
                 if (isInWarmup) {
                     listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
@@ -362,6 +370,7 @@ public class GuardianBleService extends Service {
         isInWarmup = sp.getBoolean(KEY_IS_IN_WARMUP, false);
         isCalRequired = sp.getBoolean(KEY_IS_CAL_REQUIRED, false);
         isCalPending = sp.getBoolean(KEY_IS_CAL_PENDING, false);
+        isSensorAttached = sp.getBoolean(KEY_IS_SENSOR_ATTACHED, false);
         warmupStartTimeMs = sp.getLong(KEY_WARMUP_START_TIME, 0);
 
         lastMeasurementTimeMs = sp.getLong(KEY_LAST_MEASUREMENT_TIME, 0);
@@ -459,42 +468,42 @@ public class GuardianBleService extends Service {
         String title;
         String contentText;
         long now = System.currentTimeMillis();
-        long elapsedMs = (lastMeasurementTimeMs > 0) ? (now - lastMeasurementTimeMs) : Long.MAX_VALUE;
-        long minsAgo = elapsedMs / 60_000L;
+        long elapsedMs = (lastMeasurementTimeMs > 0) ? (now - lastMeasurementTimeMs) : -1L;
+        long minsAgo = (elapsedMs >= 0) ? (elapsedMs / 60_000L) : 0L;
 
         String batStr = (batteryLevelPercent >= 0) ? (batteryLevelPercent + "%") : "--%";
         String arrow = MainActivity.getTrendArrow(lastTrendRate);
         long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
 
         if (bluetoothGatt == null && !isConnecting) {
-            title = "⚠️ Transmitter Disconnected";
-            if (lastGlucoseMmol > 0.0f) {
+            title = "⚠️ " + loc().getString(R.string.transmitter_disconnected_title);
+            if (lastGlucoseMmol > 0.0f && elapsedMs >= 0) {
                 contentText = String.format(Locale.US, "Last: %.1f %s mmol/L (%d min ago) | 🔋 %s",
                         lastGlucoseMmol, arrow, minsAgo, batStr);
             } else {
-                contentText = "Waiting for sensor connection...";
+                contentText = loc().getString(R.string.disconnected_connect_hint);
             }
         } else if (isCalPending) {
-            title = "⏳ Calibration Processing";
-            contentText = "Transmitter calculating calibration (5–15 min) | 🔋 " + batStr;
+            title = "⏳ " + loc().getString(R.string.cal_processing);
+            contentText = loc().getString(R.string.cal_processing_desc) + " | 🔋 " + batStr;
         } else if (isCalRequired) {
-            title = (lastCalTime > 0) ? "🩸 Calibration Required" : "🩸 1st Calibration Required";
-            contentText = "Enter blood glucose reading | 🔋 " + batStr;
+            title = "🩸 " + loc().getString(lastCalTime > 0 ? R.string.cal_needed : R.string.cal_waiting_first);
+            contentText = loc().getString(R.string.btn_enter_calibration) + " | 🔋 " + batStr;
         } else if (isInWarmup) {
-            long remainingWarmupMs = Math.max(0L, 7_200_000L - (now - warmupStartTimeMs));
+            long remainingWarmupMs = (warmupStartTimeMs > 0) ? Math.max(0L, 7_200_000L - (now - warmupStartTimeMs)) : 0L;
             long remTotalSec = remainingWarmupMs / 1000L;
             long remHours = remTotalSec / 3600L;
             long remMins = (remTotalSec % 3600L) / 60L;
             long remSecs = remTotalSec % 60L;
-            title = "⏳ Enlite Sensor Warm-up";
+            title = "⏳ " + loc().getString(R.string.warmup_in_progress);
             if (remainingWarmupMs > 0) {
                 if (remHours > 0) {
-                    contentText = String.format(Locale.US, "Remaining: %02d:%02d:%02d | 🔋 %s", remHours, remMins, remSecs, batStr);
+                    contentText = loc().getString(R.string.warmup_countdown_hms, remHours, remMins, remSecs) + " | 🔋 " + batStr;
                 } else {
-                    contentText = String.format(Locale.US, "Remaining: %02d:%02d | 🔋 %s", remMins, remSecs, batStr);
+                    contentText = loc().getString(R.string.warmup_countdown_ms, remMins, remSecs) + " | 🔋 " + batStr;
                 }
             } else {
-                contentText = (lastCalTime > 0 ? "Waiting for calibration" : "Waiting for 1st calibration") + " | 🔋 " + batStr;
+                contentText = loc().getString(lastCalTime > 0 ? R.string.cal_needed : R.string.cal_waiting_first) + " | 🔋 " + batStr;
             }
         } else if (elapsedMs > 11 * 60_000L) {
             title = String.format(Locale.US, "⚠️ No Fresh Data (%d min)", minsAgo);
@@ -502,7 +511,7 @@ public class GuardianBleService extends Service {
                 contentText = String.format(Locale.US, "Last BG: %.1f %s mmol/L (%d mg/dL) | 🔋 %s",
                         lastGlucoseMmol, arrow, Math.round(lastGlucoseMgDl), batStr);
             } else {
-                contentText = "Waiting for transmitter reading...";
+                contentText = loc().getString(R.string.waiting_sensor_reading);
             }
         } else if (lastGlucoseMmol > 0.0f) {
             boolean useMgDl = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getBoolean(KEY_USE_MGDL, false);
@@ -515,8 +524,8 @@ public class GuardianBleService extends Service {
             String agoStr = (minsAgo <= 0) ? "just now" : (minsAgo + " min ago");
             contentText = String.format(Locale.US, "Updated: %s (%s) | 🔋 %s", timeStr, agoStr, batStr);
         } else {
-            title = "Guardian Connect (Connected)";
-            contentText = "Initializing sensor data... | 🔋 " + batStr;
+            title = loc().getString(isSensorAttached ? R.string.sensor_attached_init : R.string.transmitter_connected_init);
+            contentText = loc().getString(isSensorAttached ? R.string.sensor_attached_init_hint : R.string.sensor_attach_hint) + " | 🔋 " + batStr;
         }
 
         Notification.Builder builder;
@@ -658,6 +667,8 @@ public class GuardianBleService extends Service {
         sensorStartTimeMs = 0;
         isCalRequired = false;
         isCalPending = false;
+        isSensorAttached = false;
+        batteryLevelPercent = -1;
         lastGlucoseMmol = 0.0f;
         lastGlucoseMgDl = 0.0f;
         lastMeasurementTimeMs = 0;
@@ -668,6 +679,8 @@ public class GuardianBleService extends Service {
                 .putLong(KEY_SENSOR_START_TIME, 0)
                 .putBoolean(KEY_IS_CAL_REQUIRED, false)
                 .putBoolean(KEY_IS_CAL_PENDING, false)
+                .putBoolean(KEY_IS_SENSOR_ATTACHED, false)
+                .putInt(KEY_BATTERY_LEVEL, -1)
                 .putFloat(KEY_LAST_MMOL, 0.0f)
                 .putFloat(KEY_LAST_MGDL, 0.0f)
                 .putLong(KEY_LAST_MEASUREMENT_TIME, 0)
@@ -776,7 +789,7 @@ public class GuardianBleService extends Service {
                 isGattConnected = true;
                 failedReconnectCount = 0;
                 clearGattQueue();
-                updateStatus("Connected. Requesting MTU...");
+                updateStatus(loc().getString(R.string.svc_connected_mtu));
                 log("GATT Connected! Requesting MTU 512...");
                 try {
                     BluetoothDevice dev = gatt.getDevice();
@@ -871,7 +884,7 @@ public class GuardianBleService extends Service {
             }
 
             log("Guardian service b0202e40 found! Setting up indications...");
-            updateStatus("Subscribing to indications...");
+            updateStatus(loc().getString(R.string.svc_subscribing));
 
             descriptorQueue.clear();
             UUID[] indicateUuids = new UUID[] {
@@ -920,7 +933,7 @@ public class GuardianBleService extends Service {
                 processNextDescriptor(gatt);
             } else {
                 log("All indications enabled!");
-                updateStatus("Indications ready. Starting comms...");
+                updateStatus(loc().getString(R.string.svc_indications_ready));
                 mainHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -944,7 +957,7 @@ public class GuardianBleService extends Service {
                     if (status == 134) {
                         if (++status134RetryCount <= 3) {
                             log("WARNING: CRITICAL_OPS write returned status 134 (attempt " + status134RetryCount + "/3). Retrying in 3500ms...");
-                            updateStatus("Transmitter stabilizing... Retry " + status134RetryCount + "/3");
+                            updateStatus(loc().getString(R.string.svc_stabilizing_retry, status134RetryCount));
                             handshakeHandler.postDelayed(new Runnable() {
                                 @Override
                                 public void run() {
@@ -959,7 +972,7 @@ public class GuardianBleService extends Service {
                             return;
                         } else {
                             log("Reason: Transmitter is on sensor and locked key change!");
-                            updateStatus("Error 134: Remove transmitter from sensor and reset in charger!");
+                            updateStatus(loc().getString(R.string.svc_error_134));
                         }
                     }
                 }
@@ -975,6 +988,23 @@ public class GuardianBleService extends Service {
                     @Override
                     public void run() {
                         if (bluetoothGatt != null) {
+                            BluetoothGattService gs = bluetoothGatt.getService(SERVICE_GUARDIAN);
+                            if (gs != null) {
+                                final BluetoothGattCharacteristic sc = gs.getCharacteristic(CHAR_SENSOR_CONNECTED_STATE);
+                                if (sc != null) {
+                                    enqueueGattWrite(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (bluetoothGatt == null) {
+                                                onGattWriteCompleted();
+                                                return;
+                                            }
+                                            boolean ok = bluetoothGatt.readCharacteristic(sc);
+                                            if (!ok) onGattWriteCompleted();
+                                        }
+                                    });
+                                }
+                            }
                             BluetoothGattService bs = bluetoothGatt.getService(SERVICE_BATTERY);
                             if (bs != null) {
                                 final BluetoothGattCharacteristic bc = bs.getCharacteristic(CHAR_BATTERY_LEVEL);
@@ -1018,8 +1048,12 @@ public class GuardianBleService extends Service {
                 byte[] raw = characteristic.getValue();
                 if (raw != null && raw.length > 0) {
                     int bat = raw[0] & 0xFF;
+                    log("Transmitter Battery read: " + bat + "% (sensorAttached=" + isSensorAttached + ")");
+                    if (bat == 0 && batteryLevelPercent <= 0) {
+                        // Transmitter GATT 0x2A19 defaults to 0% before first ADC sample; avoid false 0% red alert
+                        return;
+                    }
                     batteryLevelPercent = bat;
-                    log("Transmitter Battery read: " + bat + "%");
                     getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putInt(KEY_BATTERY_LEVEL, bat).apply();
                     if (listener != null) listener.onBatteryReceived(bat);
                     updateNotification();
@@ -1042,6 +1076,9 @@ public class GuardianBleService extends Service {
             } else if (uuid.equals(CHAR_SENSOR_CAL_EXPIRATION)) {
                 byte[] raw = characteristic.getValue();
                 handleSensorCalExpiration(raw);
+            } else if (uuid.equals(CHAR_SENSOR_CONNECTED_STATE)) {
+                byte[] raw = characteristic.getValue();
+                handleNotification(gatt, CHAR_SENSOR_CONNECTED_STATE, raw);
             }
         }
     };
@@ -1143,7 +1180,7 @@ public class GuardianBleService extends Service {
                 byte[] timePacket = GuardianCrypto.buildTimeSyncPacket(currentSec);
                 log("Wrote syncTime (Opcode 0x06, " + currentSec + "s) to CRITICAL_OPS: " + GuardianCrypto.bytesToHex(timePacket));
                 sendCriticalOps(gatt, timePacket);
-                updateStatus("Time sync request sent...");
+                updateStatus(loc().getString(R.string.svc_time_sync_sent));
             }
         }, 300L);
 
@@ -1153,7 +1190,7 @@ public class GuardianBleService extends Service {
                 if (handshakeState == HandshakeState.TIME_SYNC_REQUEST_SENT) {
                     handshakeState = HandshakeState.ACTIVE;
                     log("Time Sync: fallback timeout (no Opcode 0x07). Active monitoring state.");
-                    updateStatus("Monitoring active. Waiting for reading (~5 min)...");
+                    updateStatus(loc().getString(R.string.svc_monitoring_active));
                     if (listener != null) listener.onHandshakeStateChanged(handshakeState);
                 }
             }
@@ -1225,8 +1262,11 @@ public class GuardianBleService extends Service {
         if (uuid.equals(CHAR_BATTERY_LEVEL)) {
             if (value.length > 0) {
                 int bat = value[0] & 0xFF;
+                log("Transmitter Battery notification: " + bat + "% (sensorAttached=" + isSensorAttached + ")");
+                if (bat == 0 && batteryLevelPercent <= 0) {
+                    return;
+                }
                 batteryLevelPercent = bat;
-                log("Transmitter Battery notification: " + bat + "%");
                 getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putInt(KEY_BATTERY_LEVEL, bat).apply();
                 if (listener != null) listener.onBatteryReceived(bat);
                 updateNotification();
@@ -1244,7 +1284,7 @@ public class GuardianBleService extends Service {
             if (handshakeState == HandshakeState.IDLE || handshakeState == HandshakeState.START_COMMS_SENT) {
                 if (rePairingRequired || !isPaired || !appSecurityEnabled) {
                     log("Transmitter requires pairing (rePair=" + rePairingRequired + ", paired=" + isPaired + ", sec=" + appSecurityEnabled + "). Waiting 4.0s for transmitter power stabilization...");
-                    updateStatus("Preparing pairing...");
+                    updateStatus(loc().getString(R.string.svc_preparing_pairing));
                     handshakeHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -1255,7 +1295,7 @@ public class GuardianBleService extends Service {
                     }, 4000L);
                 } else {
                     log("Session active! Synchronizing time in 1s...");
-                    updateStatus("Syncing time...");
+                    updateStatus(loc().getString(R.string.svc_syncing_time));
                     handshakeHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -1275,7 +1315,7 @@ public class GuardianBleService extends Service {
                             .putString(KEY_APP_KEY, GuardianCrypto.bytesToHexNoSpace(appKey))
                             .apply();
                     log("Pairing confirmed by START_COMMS_RESPONSE (rePair=false, sec=true)! Synchronizing time in 1s...");
-                    updateStatus("Pairing successful! Syncing time...");
+                    updateStatus(loc().getString(R.string.svc_pairing_ok));
                     handshakeHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -1287,7 +1327,7 @@ public class GuardianBleService extends Service {
                 } else {
                     if (++pairingRetryCount <= 1) {
                         log("START_COMMS_RESPONSE: rePairingRequired=" + rePairingRequired + " (attempt " + pairingRetryCount + "/1). Retrying in 2s...");
-                        updateStatus("Resending pairing key...");
+                        updateStatus(loc().getString(R.string.svc_resending_key));
                         handshakeHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -1299,7 +1339,7 @@ public class GuardianBleService extends Service {
                     } else {
                         handshakeState = HandshakeState.IDLE;
                         log("ERROR: Transmitter rejected pairing (rePair=" + rePairingRequired + "). Disconnect from sensor, place in charger for 10s, remove and retry.");
-                        updateStatus("Transmitter reset via charger required");
+                        updateStatus(loc().getString(R.string.svc_charger_reset_req));
                     }
                 }
             } else {
@@ -1318,11 +1358,12 @@ public class GuardianBleService extends Service {
                         final boolean isPairingCmd = (lastCriticalOpsPacket[0] == 0x00);
                         byte[] basePacket = lastCriticalOpsPacket;
 
-                        // Protocol challenge verification uses the session AppKey
-                        // (both during initial pairing after Opcode 0x00 and session sync).
-                        final byte[] challengeResp = GuardianCrypto.computeChallengeResponse(appKey, basePacket, nonce);
+                        // Initial pairing (Opcode 0x00) uses MASTER_KEY for HMAC challenge;
+                        // subsequent session commands (Opcode 0x04/0x05/0x06/0x08) use APP_KEY.
+                        byte[] hmacKey = isPairingCmd ? GuardianCrypto.MASTER_KEY : appKey;
+                        final byte[] challengeResp = GuardianCrypto.computeChallengeResponse(hmacKey, basePacket, nonce);
 
-                        log("Computed HMAC response (Opcode 0x03, key=APP_KEY). Sending in 1000ms...");
+                        log("Computed HMAC response (Opcode 0x03, key=" + (isPairingCmd ? "MASTER_KEY" : "APP_KEY") + "). Sending in 1000ms...");
                         if (isPairingCmd) {
                             handshakeState = HandshakeState.PAIRING_CHALLENGE_ANSWERED;
                         }
@@ -1343,7 +1384,28 @@ public class GuardianBleService extends Service {
                     handshakeState = HandshakeState.ACTIVE;
                     String opDesc = "Command acknowledged by transmitter (Opcode 0x07 ACK)!";
                     if (lastCriticalOpsPacket != null && lastCriticalOpsPacket.length > 0) {
-                        if (lastCriticalOpsPacket[0] == 0x04) {
+                        if (lastCriticalOpsPacket[0] == 0x00) {
+                            isPaired = true;
+                            pairingRetryCount = 0;
+                            lastPairingPacket = null;
+                            getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                    .putBoolean(KEY_IS_PAIRED, true)
+                                    .putString(KEY_APP_KEY, GuardianCrypto.bytesToHexNoSpace(appKey))
+                                    .apply();
+                            opDesc = "Pairing acknowledged by transmitter (Opcode 0x00 -> ACK 0x07)!";
+                            log(opDesc + " Payload: " + GuardianCrypto.bytesToHex(value));
+                            updateStatus(loc().getString(R.string.svc_pairing_ok));
+                            if (listener != null) listener.onHandshakeStateChanged(handshakeState);
+                            handshakeHandler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (bluetoothGatt != null) {
+                                        sendTimeSync(bluetoothGatt);
+                                    }
+                                }
+                            }, 1000L);
+                            return;
+                        } else if (lastCriticalOpsPacket[0] == 0x04) {
                             opDesc = "🎉 Calibration accepted by transmitter (Opcode 0x04 -> ACK 0x07)!";
                         } else if (lastCriticalOpsPacket[0] == 0x05) {
                             opDesc = "Sensor configuration accepted by transmitter (Opcode 0x05 -> ACK 0x07)!";
@@ -1365,13 +1427,21 @@ public class GuardianBleService extends Service {
                         }
                     }
                     log(opDesc + " Payload: " + GuardianCrypto.bytesToHex(value));
-                    updateStatus("Command accepted by transmitter!");
+                    if (lastCriticalOpsPacket != null && lastCriticalOpsPacket.length > 0 && lastCriticalOpsPacket[0] == 0x06 && !isSensorAttached) {
+                        updateStatus(loc().getString(R.string.sensor_attach_hint));
+                    } else {
+                        updateStatus(loc().getString(R.string.svc_cmd_accepted));
+                    }
                     if (listener != null) listener.onHandshakeStateChanged(handshakeState);
                     requestSensorMetadata(gatt);
                 }
             }
         } else if (uuid.equals(CHAR_SENSOR_CONNECTED_STATE)) {
             boolean connected = (value.length > 0 && value[0] != 0);
+            isSensorAttached = connected;
+            getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(KEY_IS_SENSOR_ATTACHED, connected)
+                    .apply();
             log("SENSOR_CONNECTED_STATE: " + (connected ? "Connected (Enlite)" : "Disconnected"));
             if (!connected) {
                 sensorStartTimeMs = 0L;
@@ -1387,8 +1457,60 @@ public class GuardianBleService extends Service {
                         .putBoolean(KEY_IS_CAL_REQUIRED, false)
                         .putLong(KEY_WARMUP_START_TIME, 0L)
                         .apply();
-                notifyCalibrationStatus(false, false, "Sensor disconnected");
+                notifySensorConnected(false);
+                notifyCalibrationStatus(false, false, loc().getString(R.string.sensor_attach_hint));
                 if (listener != null) listener.onSensorDaysUpdated(0);
+                updateNotification();
+            } else {
+                notifySensorConnected(true);
+                // Sensor was just attached: start 2h warm-up immediately if no active glucose session exists yet
+                if (lastGlucoseMmol <= 0.0f && !isCalRequired && !isCalPending) {
+                    isInWarmup = true;
+                    if (warmupStartTimeMs <= 0L) {
+                        warmupStartTimeMs = System.currentTimeMillis();
+                    }
+                    if (sensorStartTimeMs <= 0L) {
+                        sensorStartTimeMs = warmupStartTimeMs;
+                    }
+                    lastStatusDescription = loc().getString(R.string.warmup_hint);
+                    getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                            .putBoolean(KEY_IS_IN_WARMUP, true)
+                            .putLong(KEY_WARMUP_START_TIME, warmupStartTimeMs)
+                            .putLong(KEY_SENSOR_START_TIME, sensorStartTimeMs)
+                            .putString(KEY_LAST_STATUS_DESC, lastStatusDescription)
+                            .apply();
+                    updateStatus(loc().getString(R.string.sensor_attached_init));
+                    if (listener != null) {
+                        listener.onSensorDaysUpdated(6);
+                        listener.onGlucoseReceived(0.0f, 0.0f, lastRawVal, Double.NaN, lastStatusDescription);
+                    }
+                }
+                updateNotification();
+                // Re-read battery under sensor load after 2.5s
+                mainHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (bluetoothGatt != null) {
+                            BluetoothGattService bs = bluetoothGatt.getService(SERVICE_BATTERY);
+                            if (bs != null) {
+                                final BluetoothGattCharacteristic bc = bs.getCharacteristic(CHAR_BATTERY_LEVEL);
+                                if (bc != null) {
+                                    enqueueGattWrite(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (bluetoothGatt == null) {
+                                                onGattWriteCompleted();
+                                                return;
+                                            }
+                                            boolean ok = bluetoothGatt.readCharacteristic(bc);
+                                            if (!ok) onGattWriteCompleted();
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }, 2500L);
             }
         } else if (uuid.equals(CHAR_MEASUREMENT_READY)) {
             log("MEASUREMENT_READY received: " + GuardianCrypto.bytesToHex(value));
@@ -1645,7 +1767,7 @@ public class GuardianBleService extends Service {
 
             if (!crcOk) {
                 log(String.format(Locale.US, "Warning: CRC mismatch (0x%04X != 0x%04X). Reading skipped to avoid false data.", calcCrc, expectedCrc));
-                updateStatus(String.format(Locale.US, "Reading skipped (CRC mismatch: 0x%04X != 0x%04X)", calcCrc, expectedCrc));
+                updateStatus(loc().getString(R.string.svc_crc_mismatch));
                 return;
             }
 
@@ -2037,7 +2159,23 @@ public class GuardianBleService extends Service {
         }
     };
 
+    private Context loc() {
+        return LocaleHelper.applyLocale(this);
+    }
+
+    private void notifySensorConnected(final boolean attached) {
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (listener != null) {
+                    listener.onSensorConnectedChanged(attached);
+                }
+            }
+        });
+    }
+
     private void updateStatus(final String text) {
+        lastStatusText = text;
         log("STATUS: " + text);
         mainHandler.post(new Runnable() {
             @Override
@@ -2230,6 +2368,14 @@ public class GuardianBleService extends Service {
 
     public boolean isCalPending() {
         return isCalPending;
+    }
+
+    public boolean isSensorAttached() {
+        return isSensorAttached;
+    }
+
+    public String getLastStatusText() {
+        return lastStatusText;
     }
 
     public long getWarmupStartTimeMs() {

@@ -25,9 +25,14 @@
     <string name="logs_header">📋 BLE Protocol Logs</string>
     <string name="transmitter_disconnected">Transmitter disconnected</string>
     <string name="disconnected_connect_hint">Open ⚙️ Settings to connect</string>
+    <string name="transmitter_connected_init">Transmitter connected — initializing...</string>
+    <string name="sensor_attach_hint">Attach transmitter to sensor to start warm-up</string>
+    <string name="sensor_attached_init">Sensor connected — initializing...</string>
+    <string name="sensor_attached_init_hint">Waiting for transmitter telemetry (~1–5 min)...</string>
     <string name="transmitter_disconnected_title">Transmitter Disconnected</string>
     <string name="warmup_in_progress">Enlite Sensor Warm-up...</string>
     <string name="warmup_status">Sensor Warm-up</string>
+    <string name="warmup_hint">Sensor stabilizing (~2 hours)</string>
     <string name="cal_needed">Calibration Needed</string>
     <string name="cal_waiting_first">Waiting for 1st Calibration</string>
     <string name="cal_processing">Processing Calibration...</string>
@@ -230,4 +235,5 @@
     <string name="svc_resending_key">Resending pairing key...</string>
     <string name="svc_charger_reset_req">Transmitter reset via charger required</string>
     <string name="svc_cmd_accepted">Command accepted by transmitter!</string>
+    <string name="svc_crc_mismatch">Key mismatch (CRC): reset in charger &amp; re-pair</string>
 </resources>

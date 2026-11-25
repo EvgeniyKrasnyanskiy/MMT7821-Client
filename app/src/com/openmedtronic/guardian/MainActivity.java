@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
     private static final String KEY_IS_IN_WARMUP = "is_in_warmup";
     private static final String KEY_IS_CAL_REQUIRED = "is_cal_required";
     private static final String KEY_WARMUP_START_TIME = "warmup_start_time";
+    private static final String KEY_IS_SENSOR_ATTACHED = "is_sensor_attached";
     private static final String KEY_DEVICE_NAME = "device_name";
     private static final String KEY_XDRIP_BROADCAST = "xdrip_broadcast";
     private static final String KEY_USE_MGDL = "use_mgdl";
@@ -216,31 +217,55 @@ public class MainActivity extends Activity {
             long lastCalTime = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getLong(KEY_CAL_TIME, 0);
 
             boolean isConnected = (service != null && service.isDeviceConnected());
+            boolean isConnecting = (service != null && service.isDeviceConnecting());
+            boolean sensorAttached = (service != null)
+                    ? service.isSensorAttached()
+                    : getSharedPreferences(PREF_NAME, MODE_PRIVATE).getBoolean(KEY_IS_SENSOR_ATTACHED, false);
             updateQuickTherapyButton(isConnected);
 
             if (!isConnected) {
-                textCountdown.setText("--:--");
-                textCountdown.setTextColor(Color.parseColor("#888888"));
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
-                String txDisconnectedStr = getString(R.string.transmitter_disconnected);
-                if (textGlucoseMgDl != null && !txDisconnectedStr.equals(textGlucoseMgDl.getText().toString())) {
-                    textGlucoseMgDl.setText(txDisconnectedStr);
-                    textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
-                }
-                String connectHintStr = getString(R.string.disconnected_connect_hint);
-                if (textSensorDetails != null && !connectHintStr.equals(textSensorDetails.getText().toString())) {
-                    textSensorDetails.setText(connectHintStr);
-                    textSensorDetails.setTextColor(Color.parseColor("#888888"));
+                if (isConnecting) {
+                    textCountdown.setText("⏳ ...");
+                    textCountdown.setTextColor(Color.parseColor("#FFD54F"));
+                    String connectingStr = getString(R.string.toast_connecting_tx);
+                    if (textGlucoseMgDl != null && !connectingStr.equals(textGlucoseMgDl.getText().toString())) {
+                        textGlucoseMgDl.setText(connectingStr);
+                        textGlucoseMgDl.setTextColor(Color.parseColor("#FFD54F"));
+                    }
+                    String macDetail = (targetMac != null && !targetMac.isEmpty()) ? targetMac : "";
+                    if (textSensorDetails != null && !macDetail.equals(textSensorDetails.getText().toString())) {
+                        textSensorDetails.setText(macDetail);
+                        textSensorDetails.setTextColor(Color.parseColor("#B0BEC5"));
+                    }
+                } else {
+                    textCountdown.setText("--:--");
+                    textCountdown.setTextColor(Color.parseColor("#888888"));
+                    String txDisconnectedStr = getString(R.string.transmitter_disconnected);
+                    if (textGlucoseMgDl != null && !txDisconnectedStr.equals(textGlucoseMgDl.getText().toString())) {
+                        textGlucoseMgDl.setText(txDisconnectedStr);
+                        textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
+                    }
+                    String connectHintStr = getString(R.string.disconnected_connect_hint);
+                    if (textSensorDetails != null && !connectHintStr.equals(textSensorDetails.getText().toString())) {
+                        textSensorDetails.setText(connectHintStr);
+                        textSensorDetails.setTextColor(Color.parseColor("#888888"));
+                    }
                 }
                 updateStaleState(false);
             } else if (inWarmup) {
                 if (btnQuickCalibrate != null) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
+                String warmupTitle = getString(R.string.warmup_in_progress);
+                if (textGlucoseMgDl != null && !warmupTitle.equals(textGlucoseMgDl.getText().toString())) {
+                    textGlucoseMgDl.setText(warmupTitle);
+                    textGlucoseMgDl.setTextColor(Color.parseColor("#B0BEC5"));
+                }
                 long elapsedWarmupMs = (warmupStart > 0) ? (System.currentTimeMillis() - warmupStart) : 0L;
-                long remainingWarmupMs = Math.max(0L, 7_200_000L - elapsedWarmupMs);
+                long remainingWarmupMs = (warmupStart > 0) ? Math.max(0L, 7_200_000L - elapsedWarmupMs) : 0L;
                 if (remainingWarmupMs > 0) {
                     long remTotalSec = remainingWarmupMs / 1000L;
                     long remHours = remTotalSec / 3600L;
@@ -270,7 +295,7 @@ public class MainActivity extends Activity {
                     btnQuickCalibrate.setVisibility(View.VISIBLE);
                 }
                 updateStaleState(false);
-            } else if (lastMeasurementTimeMs > 0) {
+            } else if (currentMmol > 0.0f && lastMeasurementTimeMs > 0) {
                 if (btnQuickCalibrate != null && !calReq) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
@@ -289,8 +314,18 @@ public class MainActivity extends Activity {
                 if (btnQuickCalibrate != null && !calReq) {
                     btnQuickCalibrate.setVisibility(View.GONE);
                 }
-                textCountdown.setText(R.string.next_reading_none);
-                textCountdown.setTextColor(Color.parseColor("#CCCCCC"));
+                String initTitle = getString(sensorAttached ? R.string.sensor_attached_init : R.string.transmitter_connected_init);
+                if (textGlucoseMgDl != null && !initTitle.equals(textGlucoseMgDl.getText().toString())) {
+                    textGlucoseMgDl.setText(initTitle);
+                    textGlucoseMgDl.setTextColor(Color.parseColor("#4FC3F7"));
+                }
+                String initHint = getString(sensorAttached ? R.string.sensor_attached_init_hint : R.string.sensor_attach_hint);
+                if (textSensorDetails != null && !initHint.equals(textSensorDetails.getText().toString())) {
+                    textSensorDetails.setText(initHint);
+                    textSensorDetails.setTextColor(Color.parseColor("#B0BEC5"));
+                }
+                textCountdown.setText(sensorAttached ? R.string.warmup_stabilizing : R.string.next_reading_none);
+                textCountdown.setTextColor(Color.parseColor(sensorAttached ? "#4FC3F7" : "#CCCCCC"));
                 updateStaleState(false);
             }
             mainHandler.postDelayed(this, 1000);
@@ -647,14 +682,23 @@ public class MainActivity extends Activity {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    updateStatus(connected ? "Connected to transmitter" : "Disconnected");
+                    GuardianBleService s = GuardianBleService.getInstance();
                     if (connected) {
+                        String svcStatus = (s != null && s.getLastStatusText() != null && !s.getLastStatusText().isEmpty())
+                                ? s.getLastStatusText()
+                                : getString(R.string.connected_to_tx);
+                        updateStatus(svcStatus);
                         updateTransmitterNameDisplay();
+                        if (s != null && s.isInWarmup()) {
+                            displayWarmup(s.getLastRawVal(), s.getLastStatusDescription());
+                        } else if (currentMmol <= 0.0f && !isCalPending && !isCalRequired) {
+                            displayConnectedInitializing(s != null && s.isSensorAttached());
+                        }
                     } else {
+                        updateStatus(getString(R.string.status_disconnected));
                         updateBatteryDisplay(-1);
                         updateSensorDaysDisplay();
                         updateCalCountdownDisplay();
-            updateSensorDaysDisplay();
                         displayDisconnected();
                     }
                 }
@@ -663,6 +707,30 @@ public class MainActivity extends Activity {
 
         @Override
         public void onHandshakeStateChanged(GuardianBleService.HandshakeState state) {
+        }
+
+        @Override
+        public void onSensorConnectedChanged(final boolean attached) {
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    GuardianBleService s = GuardianBleService.getInstance();
+                    if (s == null || !s.isDeviceConnected()) return;
+                    if (!attached) {
+                        isInWarmup = false;
+                        isCalPending = false;
+                        isCalRequired = false;
+                        currentMmol = 0.0f;
+                    }
+                    updateSensorDaysDisplay();
+                    updateCalCountdownDisplay();
+                    if (s.isInWarmup()) {
+                        displayWarmup(s.getLastRawVal(), s.getLastStatusDescription());
+                    } else if (currentMmol <= 0.0f && !isCalPending && !isCalRequired) {
+                        displayConnectedInitializing(attached);
+                    }
+                }
+            });
         }
 
         @Override
@@ -736,13 +804,17 @@ public class MainActivity extends Activity {
                 }
             }
             boolean isConnected = service.isDeviceConnected();
+            boolean isConnecting = service.isDeviceConnecting();
             updateBatteryDisplay(isConnected ? service.getBatteryLevel() : -1);
             updateSensorDaysDisplay();
             updateCalCountdownDisplay();
-            updateSensorDaysDisplay();
 
             if (!isConnected) {
-                displayDisconnected();
+                if (isConnecting) {
+                    displayConnecting();
+                } else {
+                    displayDisconnected();
+                }
             } else if (service.getLastGlucoseMmol() > 0.0f) {
                 displayGlucose(service.getLastGlucoseMmol(), service.getLastGlucoseMgDl(),
                         service.getLastRawVal(), service.getLastTrendRate(), service.getLastStatusDescription());
@@ -752,6 +824,8 @@ public class MainActivity extends Activity {
                 displayCalibrationPending(service.getLastStatusDescription());
             } else if (service.isCalRequired()) {
                 displayCalibrationRequired(service.getLastRawVal(), service.getLastStatusDescription());
+            } else {
+                displayConnectedInitializing(service.isSensorAttached());
             }
         }
     }
@@ -823,9 +897,17 @@ public class MainActivity extends Activity {
 
         GuardianBleService service = GuardianBleService.getInstance();
         boolean isConnected = (service != null && service.isDeviceConnected());
+        boolean isConnecting = (service != null && service.isDeviceConnecting());
+        boolean sensorAttached = (service != null)
+                ? service.isSensorAttached()
+                : sp.getBoolean(KEY_IS_SENSOR_ATTACHED, false);
 
         if (!isConnected) {
-            displayDisconnected();
+            if (isConnecting) {
+                displayConnecting();
+            } else {
+                displayDisconnected();
+            }
         } else if (isInWarmup) {
             displayWarmup(savedRaw, savedStatus);
         } else if (isCalPending) {
@@ -835,7 +917,7 @@ public class MainActivity extends Activity {
         } else if (lastMmol > 0.0f) {
             displaySavedGlucose(lastMmol, lastMgDl);
         } else {
-            displayDisconnected();
+            displayConnectedInitializing(sensorAttached);
         }
     }
 
@@ -2804,6 +2886,70 @@ public class MainActivity extends Activity {
         displayDisconnected();
     }
 
+    private void displayConnecting() {
+        if (textGlucoseMmolValue != null) {
+            textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            textGlucoseMmolValue.setText("--");
+            textGlucoseMmolValue.setTextColor(Color.parseColor("#FFD54F"));
+        }
+        if (textGlucoseMmolUnit != null) {
+            textGlucoseMmolUnit.setVisibility(View.GONE);
+        }
+        if (textTrendArrow != null) {
+            textTrendArrow.setVisibility(View.VISIBLE);
+            textTrendArrow.setText("⏳");
+            textTrendArrow.setTextColor(Color.parseColor("#FFD54F"));
+        }
+        if (textGlucoseMgDl != null) {
+            textGlucoseMgDl.setText(R.string.toast_connecting_tx);
+            textGlucoseMgDl.setTextColor(Color.parseColor("#FFD54F"));
+        }
+        if (textSensorDetails != null) {
+            textSensorDetails.setText((targetMac != null && !targetMac.isEmpty()) ? targetMac : "");
+            textSensorDetails.setTextColor(Color.parseColor("#B0BEC5"));
+        }
+        if (textCountdown != null) {
+            textCountdown.setText("⏳ ...");
+            textCountdown.setTextColor(Color.parseColor("#FFD54F"));
+        }
+        if (btnQuickCalibrate != null) {
+            btnQuickCalibrate.setVisibility(View.GONE);
+        }
+        updateQuickTherapyButton(false);
+    }
+
+    private void displayConnectedInitializing(boolean sensorAttached) {
+        if (textGlucoseMmolValue != null) {
+            textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            textGlucoseMmolValue.setText("--");
+            textGlucoseMmolValue.setTextColor(Color.parseColor("#4FC3F7"));
+        }
+        if (textGlucoseMmolUnit != null) {
+            textGlucoseMmolUnit.setVisibility(View.GONE);
+        }
+        if (textTrendArrow != null) {
+            textTrendArrow.setVisibility(View.VISIBLE);
+            textTrendArrow.setText("⏳");
+            textTrendArrow.setTextColor(Color.parseColor("#4FC3F7"));
+        }
+        if (textGlucoseMgDl != null) {
+            textGlucoseMgDl.setText(sensorAttached ? R.string.sensor_attached_init : R.string.transmitter_connected_init);
+            textGlucoseMgDl.setTextColor(Color.parseColor("#4FC3F7"));
+        }
+        if (textSensorDetails != null) {
+            textSensorDetails.setText(sensorAttached ? R.string.sensor_attached_init_hint : R.string.sensor_attach_hint);
+            textSensorDetails.setTextColor(Color.parseColor("#B0BEC5"));
+        }
+        if (textCountdown != null) {
+            textCountdown.setText(sensorAttached ? R.string.warmup_stabilizing : R.string.next_reading_none);
+            textCountdown.setTextColor(Color.parseColor(sensorAttached ? "#4FC3F7" : "#CCCCCC"));
+        }
+        if (btnQuickCalibrate != null) {
+            btnQuickCalibrate.setVisibility(View.GONE);
+        }
+        updateQuickTherapyButton(true);
+    }
+
     private void displayDisconnected() {
         if (textGlucoseMmolValue != null) {
             textGlucoseMmolValue.setPaintFlags(textGlucoseMmolValue.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
@@ -2859,8 +3005,14 @@ public class MainActivity extends Activity {
         }
         textGlucoseMgDl.setText(R.string.warmup_in_progress);
         textGlucoseMgDl.setTextColor(Color.parseColor("#B0BEC5"));
-        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : getString(R.string.warmup_status);
+        String warmupStatusStr = getString(R.string.warmup_status);
+        String desc = (statusDesc != null && !statusDesc.isEmpty()
+                && !"Warm-up".equalsIgnoreCase(statusDesc.trim())
+                && !warmupStatusStr.equals(statusDesc.trim()))
+                ? statusDesc
+                : getString(R.string.warmup_hint);
         textSensorDetails.setText(desc);
+        textSensorDetails.setTextColor(Color.parseColor("#B0BEC5"));
         if (btnQuickCalibrate != null) {
             btnQuickCalibrate.setVisibility(View.GONE);
         }
@@ -2892,7 +3044,9 @@ public class MainActivity extends Activity {
         }
         textGlucoseMgDl.setText(calTitle);
         textGlucoseMgDl.setTextColor(Color.parseColor("#FFD54F"));
-        String desc = (statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : calTitle;
+        String desc = (statusDesc != null && !statusDesc.isEmpty() && !calTitle.equals(statusDesc.trim()))
+                ? statusDesc
+                : getString(R.string.alarm_cal_text);
         textSensorDetails.setText(desc);
         textCountdown.setText(lastCalTime > 0 ? "🩸 " + calTitle : calTitle);
         textCountdown.setTextColor(Color.parseColor("#FFD54F"));
@@ -2982,15 +3136,15 @@ public class MainActivity extends Activity {
             if (textTrendArrow != null) {
                 textTrendArrow.setVisibility(View.GONE);
             }
-            textGlucoseMgDl.setText("Waiting for sensor reading...");
+            textGlucoseMgDl.setText(R.string.waiting_sensor_reading);
             textGlucoseMgDl.setTextColor(Color.parseColor("#888888"));
-            String sensorState = "Normal".equals(statusDesc) ? "Sensor OK" : ((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : "Waiting for sensor...");
+            String sensorState = "Normal".equals(statusDesc) ? "Sensor OK" : ((statusDesc != null && !statusDesc.isEmpty()) ? statusDesc : getString(R.string.waiting_sensor_reading));
             textSensorDetails.setText(sensorState);
             textSensorDetails.setTextColor(Color.parseColor("#AAAAAA"));
             if (btnQuickCalibrate != null) {
                 btnQuickCalibrate.setVisibility(View.GONE);
             }
-            updateStatus("Connected to transmitter");
+            updateStatus(getString(R.string.connected_to_tx));
             return;
         }
 
@@ -3055,7 +3209,7 @@ public class MainActivity extends Activity {
                 glucoseChart.addPoint(lastMeasurementTimeMs, mmol, (float) rawVal);
             }
 
-            updateStatus("Updated at " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(lastMeasurementTimeMs)));
+            updateStatus(getString(R.string.status_updated_at, new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(lastMeasurementTimeMs))));
     }
 
     private void updateStatus(final String text) {

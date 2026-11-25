@@ -25,9 +25,14 @@
     <string name="logs_header">📋 Логи протокола BLE</string>
     <string name="transmitter_disconnected">Трансмиттер отключён</string>
     <string name="disconnected_connect_hint">Откройте ⚙️ Настройки для подключения</string>
+    <string name="transmitter_connected_init">Трансмиттер подключён — инициализация...</string>
+    <string name="sensor_attach_hint">Закрепите трансмиттер на сенсоре для запуска</string>
+    <string name="sensor_attached_init">Сенсор подключён — инициализация...</string>
+    <string name="sensor_attached_init_hint">Ожидание данных от трансмиттера (~1–5 мин)...</string>
     <string name="transmitter_disconnected_title">Трансмиттер отключён</string>
     <string name="warmup_in_progress">Прогрев сенсора Enlite...</string>
     <string name="warmup_status">Прогрев сенсора</string>
+    <string name="warmup_hint">Идёт стабилизация сенсора (~2 часа)</string>
     <string name="cal_needed">Требуется калибровка</string>
     <string name="cal_waiting_first">Ожидание 1-й калибровки</string>
     <string name="cal_processing">Обработка калибровки...</string>
@@ -230,4 +235,5 @@
     <string name="svc_resending_key">Повторная отправка ключа...</string>
     <string name="svc_charger_reset_req">Требуется сброс трансмиттера на зарядке</string>
     <string name="svc_cmd_accepted">Команда принята трансмиттером!</string>
+    <string name="svc_crc_mismatch">Несовпадение ключа (CRC): сбросьте в зарядке и пересопрягите</string>
 </resources>
