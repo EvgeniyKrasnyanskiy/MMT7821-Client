@@ -40,6 +40,8 @@
     <string name="cal_waiting_accept">⏳ Ожидание подтверждения калибровки...</string>
     <string name="warmup_countdown_hms">⏳ Прогрев: %1$02d:%2$02d:%3$02d</string>
     <string name="warmup_countdown_ms">⏳ Прогрев: %1$02d:%2$02d</string>
+    <string name="warmup_remaining_hms">Осталось: %1$02d:%2$02d:%3$02d</string>
+    <string name="warmup_remaining_ms">Осталось: %1$02d:%2$02d</string>
     <string name="warmup_stabilizing">⏳ Стабилизация прогрева...</string>
     <string name="next_reading_in">След. замер: %1$02d:%2$02d</string>
     <string name="next_reading_none">След. замер: --:--</string>

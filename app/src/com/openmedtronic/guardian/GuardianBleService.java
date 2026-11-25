@@ -498,9 +498,9 @@ public class GuardianBleService extends Service {
             title = "⏳ " + loc().getString(R.string.warmup_in_progress);
             if (remainingWarmupMs > 0) {
                 if (remHours > 0) {
-                    contentText = loc().getString(R.string.warmup_countdown_hms, remHours, remMins, remSecs) + " | 🔋 " + batStr;
+                    contentText = loc().getString(R.string.warmup_remaining_hms, remHours, remMins, remSecs) + " | 🔋 " + batStr;
                 } else {
-                    contentText = loc().getString(R.string.warmup_countdown_ms, remMins, remSecs) + " | 🔋 " + batStr;
+                    contentText = loc().getString(R.string.warmup_remaining_ms, remMins, remSecs) + " | 🔋 " + batStr;
                 }
             } else {
                 contentText = loc().getString(lastCalTime > 0 ? R.string.cal_needed : R.string.cal_waiting_first) + " | 🔋 " + batStr;

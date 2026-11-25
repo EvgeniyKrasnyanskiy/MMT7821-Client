@@ -85,14 +85,14 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
             } else if (inWarmup) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));
-                views.setTextViewText(R.id.textWidgetTrend, "⏳");
+                views.setTextViewText(R.id.textWidgetTrend, "");
                 views.setTextColor(R.id.textWidgetTrend, Color.parseColor("#4FC3F7"));
                 views.setTextViewText(R.id.textWidgetUnit, "");
 
                 long totalSec = Math.max(0, warmupRemainMs / 1000);
                 long hours = totalSec / 3600;
                 long mins = (totalSec % 3600) / 60;
-                views.setTextViewText(R.id.textWidgetSub, context.getString(R.string.widget_warmup, hours, mins));
+                views.setTextViewText(R.id.textWidgetSub, String.format(Locale.US, "%02d:%02d", hours, mins));
             } else if (calPending) {
                 views.setTextViewText(R.id.textWidgetGlucose, "--");
                 views.setTextColor(R.id.textWidgetGlucose, Color.parseColor("#4FC3F7"));

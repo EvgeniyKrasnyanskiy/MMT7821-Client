@@ -40,6 +40,8 @@
     <string name="cal_waiting_accept">⏳ Waiting for calibration acceptance...</string>
     <string name="warmup_countdown_hms">⏳ Warm-up: %1$02d:%2$02d:%3$02d</string>
     <string name="warmup_countdown_ms">⏳ Warm-up: %1$02d:%2$02d</string>
+    <string name="warmup_remaining_hms">Remaining: %1$02d:%2$02d:%3$02d</string>
+    <string name="warmup_remaining_ms">Remaining: %1$02d:%2$02d</string>
     <string name="warmup_stabilizing">⏳ Warm-up stabilizing...</string>
     <string name="next_reading_in">Next reading: %1$02d:%2$02d</string>
     <string name="next_reading_none">Next reading: --:--</string>
