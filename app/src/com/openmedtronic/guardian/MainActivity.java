@@ -1775,6 +1775,43 @@ public class MainActivity extends Activity {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
+    private static boolean isGuardianDeviceName(String name) {
+        if (name == null) return false;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return false;
+        String upper = trimmed.toUpperCase(Locale.US);
+        if (upper.contains("GUARDIAN") || upper.contains("CONNECT") || upper.contains("MEDTRONIC") || upper.contains("MMT")) {
+            return true;
+        }
+        // Medtronic Guardian Connect transmitters advertise factory serial number: "GT" + digits (+ optional letter), e.g. GT8379179M
+        if (upper.startsWith("GT") && upper.length() >= 6 && Character.isDigit(upper.charAt(2))) {
+            return true;
+        }
+        return false;
+    }
+
+    private void onTransmitterDiscovered(final String addr, final String devName, final int rssi,
+                                         final EditText editMacInput, final Button btnScan) {
+        String rssiSuffix = (rssi != Integer.MIN_VALUE) ? (" RSSI=" + rssi) : " (bonded)";
+        appendLog("TRANSMITTER FOUND: " + (devName != null ? devName : "Guardian") + " [" + addr + "]" + rssiSuffix);
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                editMacInput.setText(addr);
+                targetMac = addr;
+                SharedPreferences.Editor ed = getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putString(KEY_MAC, addr);
+                if (devName != null && !devName.isEmpty()) {
+                    ed.putString(KEY_DEVICE_NAME, devName);
+                }
+                ed.apply();
+                updateTransmitterNameDisplay();
+                btnScan.setText(getString(R.string.settings_scan_found, addr));
+                styleSettingsButton(btnScan, Color.parseColor("#2E7D32"), false);
+                Toast.makeText(MainActivity.this, getString(R.string.toast_tx_found, addr), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     private void startBleScanner(final EditText editMacInput, final Button btnScan) {
         if (!checkPermissions()) {
             Toast.makeText(this, R.string.toast_grant_bt_first, Toast.LENGTH_SHORT).show();
@@ -1812,13 +1849,13 @@ public class MainActivity extends Activity {
                 if (result == null || result.getDevice() == null) return;
                 BluetoothDevice dev = result.getDevice();
                 String name = dev.getName();
+                if ((name == null || name.isEmpty()) && result.getScanRecord() != null) {
+                    name = result.getScanRecord().getDeviceName();
+                }
                 String addr = dev.getAddress();
 
-                boolean isMatch = false;
-                if (name != null && (name.contains("Guardian") || name.contains("Connect") || name.contains("Medtronic"))) {
-                    isMatch = true;
-                }
-                if (result.getScanRecord() != null && result.getScanRecord().getServiceUuids() != null) {
+                boolean isMatch = isGuardianDeviceName(name);
+                if (!isMatch && result.getScanRecord() != null && result.getScanRecord().getServiceUuids() != null) {
                     for (ParcelUuid u : result.getScanRecord().getServiceUuids()) {
                         if (u.getUuid().equals(GuardianBleService.SERVICE_GUARDIAN)) {
                             isMatch = true;
@@ -1828,29 +1865,11 @@ public class MainActivity extends Activity {
                 }
 
                 if (isMatch) {
-                    appendLog("TRANSMITTER FOUND: " + (name != null ? name : "Guardian") + " [" + addr + "] RSSI=" + result.getRssi());
                     try {
                         scanner.stopScan(this);
                     } catch (Exception ignored) {}
                     bleScanCallback = null;
-
-                    final String finalDevName = name;
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            editMacInput.setText(addr);
-                            targetMac = addr;
-                            SharedPreferences.Editor ed = getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit().putString(KEY_MAC, addr);
-                            if (finalDevName != null && !finalDevName.isEmpty()) {
-                                ed.putString(KEY_DEVICE_NAME, finalDevName);
-                            }
-                            ed.apply();
-                            updateTransmitterNameDisplay();
-                            btnScan.setText(getString(R.string.settings_scan_found, addr));
-                            styleSettingsButton(btnScan, Color.parseColor("#2E7D32"), false);
-                            Toast.makeText(MainActivity.this, "Transmitter found: " + addr, Toast.LENGTH_LONG).show();
-                        }
-                    });
+                    onTransmitterDiscovered(addr, name, result.getRssi(), editMacInput, btnScan);
                 }
             }
 
@@ -1862,7 +1881,7 @@ public class MainActivity extends Activity {
                     public void run() {
                         btnScan.setText(R.string.settings_scan_ble);
                         styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
-                        Toast.makeText(MainActivity.this, "BLE scan error: " + errorCode, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, getString(R.string.toast_scan_error, errorCode), Toast.LENGTH_SHORT).show();
                     }
                 });
                 bleScanCallback = null;
@@ -1873,21 +1892,15 @@ public class MainActivity extends Activity {
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
 
-        List<ScanFilter> filters = new ArrayList<>();
-        filters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(GuardianBleService.SERVICE_GUARDIAN)).build());
-
         try {
-            scanner.startScan(filters, settings, bleScanCallback);
-        } catch (Exception e) {
-            try {
-                scanner.startScan(null, settings, bleScanCallback);
-            } catch (Exception ex) {
-                appendLog("Could not start BLE scan: " + ex.getMessage());
-                btnScan.setText(R.string.settings_scan_ble);
-                styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
-                bleScanCallback = null;
-                return;
-            }
+            // Unfiltered BLE scan so transmitters advertising GT* serial name without 128-bit UUID in primary ADV are found
+            scanner.startScan(null, settings, bleScanCallback);
+        } catch (Exception ex) {
+            appendLog("Could not start BLE scan: " + ex.getMessage());
+            btnScan.setText(R.string.settings_scan_ble);
+            styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
+            bleScanCallback = null;
+            return;
         }
 
         mainHandler.postDelayed(new Runnable() {
@@ -1898,6 +1911,20 @@ public class MainActivity extends Activity {
                         scanner.stopScan(bleScanCallback);
                     } catch (Exception ignored) {}
                     bleScanCallback = null;
+
+                    // Fallback: check system-known bonded devices if transmitter was previously paired in OS Bluetooth settings
+                    try {
+                        java.util.Set<BluetoothDevice> bonded = bluetoothAdapter.getBondedDevices();
+                        if (bonded != null) {
+                            for (BluetoothDevice bDev : bonded) {
+                                if (bDev != null && isGuardianDeviceName(bDev.getName())) {
+                                    onTransmitterDiscovered(bDev.getAddress(), bDev.getName(), Integer.MIN_VALUE, editMacInput, btnScan);
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
+
                     btnScan.setText(R.string.settings_scan_ble);
                     styleSettingsButton(btnScan, Color.parseColor("#2A2A2A"), false);
                     appendLog("BLE scan timed out (15s).");
